@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tide Almanac — monthly tide charts for any coast</title>
+<meta name="description" content="Look up a coastal location and generate a printable monthly tide chart with peaks, troughs, sunrise, sunset and moon phases. Exports as SVG.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,600;1,6..96,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#e9eeea;
+    --paper-2:#dde5e0;
+    --paper-3:#cfdad4;
+    --ink:#12262e;
+    --ink-soft:#4a6a72;
+    --ink-faint:#83a0a3;
+    --water:#2e6e7e;
+    --water-deep:#1b4a58;
+    --water-pale:#b6d3d7;
+    --sun:#c8802c;
+    --rule:#b3c5bf;
+    --focus:#1b4a58;
+    --shadow:0 1px 0 rgba(18,38,46,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--water-deep)}
+  .wrap{max-width:1376px;margin:0 auto;padding:0 24px 96px}
+
+  /* ---------- masthead ---------- */
+  header.mast{
+    padding:44px 0 20px;
+    border-bottom:1px solid var(--rule);
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:32px;
+    flex-wrap:wrap;
+  }
+  .mast h1{
+    font-family:"Bodoni Moda",Didot,"Times New Roman",serif;
+    font-weight:400;
+    font-size:clamp(38px,6vw,64px);
+    line-height:.95;
+    margin:0;
+    letter-spacing:-.01em;
+  }
+  .mast p{
+    margin:10px 0 0;
+    max-width:52ch;
+    color:var(--ink-soft);
+  }
+  .mast .colophon{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    text-align:right;
+    line-height:1.8;
+  }
+
+  /* ---------- controls ---------- */
+  .controls{
+    display:grid;
+    grid-template-columns:minmax(280px,1.35fr) minmax(240px,1fr);
+    gap:0;
+    border-bottom:1px solid var(--rule);
+  }
+  .field{padding:22px 28px 22px 0}
+  .field + .field{padding-left:28px;border-left:1px solid var(--rule)}
+  .field h2{
+    font-size:13px;
+    font-weight:600;
+    margin:0 0 12px;
+    letter-spacing:.01em;
+  }
+  .searchrow{display:flex;gap:8px}
+  input[type=text],input[type=number],select{
+    font:inherit;
+    color:var(--ink);
+    background:#fff;
+    border:1px solid var(--rule);
+    border-radius:2px;
+    padding:9px 11px;
+    min-width:0;
+  }
+  input[type=text]{flex:1}
+  input:focus-visible,select:focus-visible,button:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:1px;
+  }
+  button{
+    font:inherit;
+    font-weight:500;
+    color:var(--paper);
+    background:var(--water-deep);
+    border:1px solid var(--water-deep);
+    border-radius:2px;
+    padding:9px 16px;
+    cursor:pointer;
+  }
+  button:hover{background:#123742;border-color:#123742}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{
+    background:transparent;
+    color:var(--ink);
+    border-color:var(--rule);
+  }
+  button.ghost:hover{background:var(--paper-2);border-color:var(--ink-soft)}
+
+  .results{list-style:none;margin:12px 0 0;padding:0;max-height:230px;overflow:auto}
+  .results li{border-top:1px solid var(--rule)}
+  .results button{
+    width:100%;
+    text-align:left;
+    background:transparent;
+    color:var(--ink);
+    border:0;
+    padding:9px 4px;
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .results button:hover{background:var(--paper-2)}
+  .results .coord{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    white-space:nowrap;
+  }
+
+  .months{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:4px}
+  .months button{
+    padding:7px 0;
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--rule);
+    font-family:"IBM Plex Mono",monospace;
+    font-size:12px;
+  }
+  .months button:hover{background:var(--paper-2)}
+  .months button[aria-pressed=true]{
+    background:var(--water-deep);
+    color:var(--paper);
+    border-color:var(--water-deep);
+  }
+  .yearrow{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .yearrow label{font-size:12.5px;color:var(--ink-soft)}
+  .yearrow input{width:88px}
+
+  .opts{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px 26px;
+    align-items:center;
+    padding:16px 0;
+    border-bottom:1px solid var(--rule);
+    font-size:13px;
+  }
+  .opts label{display:flex;gap:7px;align-items:center;color:var(--ink-soft)}
+  .opts select{padding:6px 9px;font-size:13px}
+  .spacer{flex:1}
+  .exports{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ---------- status ---------- */
+  .status{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:12.5px;
+    padding:14px 0;
+    color:var(--ink-soft);
+    min-height:44px;
+  }
+  .status.err{color:#8a2f22}
+  .status .bar{
+    display:block;
+    height:2px;
+    background:var(--paper-3);
+    margin-top:8px;
+    overflow:hidden;
+  }
+  .status .bar i{display:block;height:100%;background:var(--water);width:0;transition:width .25s}
+
+  /* ---------- poster stage ---------- */
+  .stage{
+    margin-top:8px;
+    background:var(--paper-2);
+    border:1px solid var(--rule);
+    padding:24px;
+    overflow:auto;
+  }
+  .stage svg{display:block;width:100%;height:auto;max-width:1280px;margin:0 auto;box-shadow:0 2px 14px rgba(18,38,46,.13)}
+  .empty{
+    padding:72px 24px;
+    text-align:center;
+    color:var(--ink-faint);
+    font-family:"IBM Plex Mono",monospace;
+    font-size:13px;
+  }
+
+  footer.notes{
+    margin-top:36px;
+    padding-top:20px;
+    border-top:1px solid var(--rule);
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:28px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+  footer.notes h3{font-size:12.5px;margin:0 0 6px;color:var(--ink);font-weight:600}
+  footer.notes p{margin:0 0 8px}
+
+  .warn{
+    background:#f6ecd8;
+    border:1px solid #ddc79b;
+    padding:11px 14px;
+    font-size:12.5px;
+    margin-top:14px;
+    color:#5c451c;
+  }
+
+  @media (max-width:860px){
+    .controls{grid-template-columns:1fr}
+    .field{padding:20px 0}
+    .field + .field{padding-left:0;border-left:0;border-top:1px solid var(--rule)}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="mast">
+  <div>
+    <h1>Tide Almanac</h1>
+    <p>Find a coastal place, pick a month, and get a chart of every high and low water alongside the sun and the moon. Each month exports as an SVG.</p>
+  </div>
+  <div class="colophon">
+    tide predictions — NOAA CO-OPS / Open-Meteo<br>
+    sun &amp; moon — computed in your browser<br>
+    no account, no key, nothing stored
+  </div>
+</header>
+
+<div class="controls">
+  <section class="field">
+    <h2><label for="q">Where</label></h2>
+    <div class="searchrow">
+      <input type="text" id="q" placeholder="Brighton, Monterey, Mont-Saint-Michel…" autocomplete="off" spellcheck="false">
+      <button id="go">Search</button>
+    </div>
+    <ul class="results" id="results" hidden></ul>
+    <div id="stationbox" hidden style="margin-top:14px">
+      <h2><label for="station">Tide station</label></h2>
+      <select id="station" style="width:100%"></select>
+    </div>
+  </section>
+
+  <section class="field">
+    <h2>When</h2>
+    <div class="yearrow">
+      <label for="year">Year</label>
+      <input type="number" id="year" min="1990" max="2035" step="1">
+      <button class="ghost" id="prevYear" aria-label="Previous year">&#8592;</button>
+      <button class="ghost" id="nextYear" aria-label="Next year">&#8594;</button>
+    </div>
+    <div class="months" id="months"></div>
+  </section>
+</div>
+
+<div class="opts">
+  <label>Units
+    <select id="units">
+      <option value="metric">metres</option>
+      <option value="english">feet</option>
+    </select>
+  </label>
+  <label>Clock
+    <select id="clock">
+      <option value="24">24-hour</option>
+      <option value="12">12-hour</option>
+    </select>
+  </label>
+  <label>Palette
+    <select id="theme">
+      <option value="chart">Chart paper</option>
+      <option value="night">Night watch</option>
+      <option value="ink">Ink on white</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="embedFonts" checked> Embed fonts in exports</label>
+  <div class="spacer"></div>
+  <div class="exports">
+    <button class="ghost" id="dlSvg" disabled>Download SVG</button>
+    <button class="ghost" id="dlPng" disabled>Download PNG</button>
+    <button class="ghost" id="dlYear" disabled>All 12 months (.zip)</button>
+  </div>
+</div>
+
+<div class="status" id="status" role="status" aria-live="polite"></div>
+<div id="warnbox"></div>
+
+<div class="stage" id="stage">
+  <div class="empty">Search for a coastal place to begin.</div>
+</div>
+
+<footer class="notes">
+  <div>
+    <h3>Where the numbers come from</h3>
+    <p>In United States waters the chart uses NOAA CO-OPS harmonic tide predictions from the nearest official station, referenced to mean lower low water.</p>
+    <p>Everywhere else it falls back to the Open-Meteo marine model, an 8&nbsp;km global grid referenced to mean sea level. Useful for open coast, unreliable in estuaries and narrow inlets.</p>
+  </div>
+  <div>
+    <h3>Not for navigation</h3>
+    <p>Predictions ignore weather. Storm surge, barometric pressure and wind routinely shift real water levels by tens of centimetres and occasionally by metres. Use official tide tables for anything that matters.</p>
+  </div>
+  <div>
+    <h3>Sun and moon</h3>
+    <p>Sunrise, sunset, civil twilight, moonrise, moonset, phase and lunar distance are computed locally from standard low-precision astronomy, accurate to about a minute. No network needed.</p>
+  </div>
+  <div>
+    <h3>Hosting this</h3>
+    <p>This is one self-contained HTML file. Drop it in a repository, turn on GitHub Pages, done. Location and month live in the URL, so any chart you are looking at can be linked to directly.</p>
+  </div>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   Tide Almanac — single file, no build step, no API keys.
+   ========================================================================== */
+
+const MONTHS = ["January","February","March","April","May","June","July",
+                "August","September","October","November","December"];
+const MON3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DOW3 = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const APP = "TideAlmanac";
+
+const $ = s => document.querySelector(s);
+const el = id => document.getElementById(id);
+const pad2 = n => String(n).padStart(2,"0");
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const rad = Math.PI/180;
+const sind = d => Math.sin(d*rad), cosd = d => Math.cos(d*rad), tand = d => Math.tan(d*rad);
+const asind = x => Math.asin(clamp(x,-1,1))/rad, acosd = x => Math.acos(clamp(x,-1,1))/rad;
+const atan2d = (y,x) => Math.atan2(y,x)/rad;
+const norm360 = a => ((a%360)+360)%360;
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------------------------------------------------------------- time zone */
+// Offset in minutes (east positive) of an IANA zone at a given UTC instant.
+const _tzFmt = new Map();
+function tzOffset(date, tz){
+  if(!tz) return -date.getTimezoneOffset();
+  let f = _tzFmt.get(tz);
+  if(!f){
+    f = new Intl.DateTimeFormat("en-US",{timeZone:tz,hour12:false,
+      year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    _tzFmt.set(tz,f);
+  }
+  const p = {};
+  for(const x of f.formatToParts(date)) if(x.type!=="literal") p[x.type]=x.value;
+  const asUTC = Date.UTC(+p.year, +p.month-1, +p.day, p.hour==="24"?0:+p.hour, +p.minute, +p.second);
+  return Math.round((asUTC - date.getTime())/60000);
+}
+// UTC instant for a wall-clock time in the given zone.
+function fromLocal(y,m,d,h,mi,tz){
+  const guess = Date.UTC(y,m-1,d,h,mi);
+  let off = tzOffset(new Date(guess), tz);
+  let t = guess - off*60000;
+  off = tzOffset(new Date(t), tz);          // second pass across DST edges
+  return new Date(guess - off*60000);
+}
+// Minutes past local midnight of the given local day, may be <0 or >1440.
+function localMinutes(date, tz, midnightUTC){
+  return (date.getTime() - midnightUTC)/60000 + tzOffset(date,tz) - tzOffset(new Date(midnightUTC),tz);
+}
+function tzAbbr(tz, date){
+  try{
+    const f = new Intl.DateTimeFormat("en-US",{timeZone:tz,timeZoneName:"short"});
+    const p = f.formatToParts(date).find(x=>x.type==="timeZoneName");
+    return p ? p.value : tz;
+  }catch(e){ return tz; }
+}
+
+/* ------------------------------------------------------------------ astronomy
+   Sun: the standard sunrise equation (~1 min).
+   Moon: Schlyter's low-precision lunar theory with the principal perturbation
+   terms (~2 arcmin), enough for rise/set to the minute and exact phase times. */
+
+const J2000 = 2451545.0;
+const jdOf = date => date.getTime()/86400000 + 2440587.5;
+const dateOfJD = jd => new Date((jd - 2440587.5)*86400000);
+
+function sunEvents(y,m,d,lat,lon,tz){
+  // Julian day of local noon, which pins the correct solar cycle.
+  const noonUTC = fromLocal(y,m,d,12,0,tz);
+  const n = Math.round(jdOf(noonUTC) - J2000 + 0.0008 - lon/360);
+  const Jstar = n - lon/360;
+  const M = norm360(357.5291 + 0.98560028*Jstar);
+  const C = 1.9148*sind(M) + 0.02*sind(2*M) + 0.0003*sind(3*M);
+  const lam = norm360(M + C + 180 + 102.9372);
+  const Jtr = J2000 + Jstar + 0.0053*sind(M) - 0.0069*sind(2*lam);
+  const dec = asind(sind(lam)*sind(23.4397));
+  const events = {noon:dateOfJD(Jtr), dec, polar:null, twiPolar:null};
+  const solve = (alt,riseKey,setKey,flag) => {
+    const cosw = (sind(alt) - sind(lat)*sind(dec)) / (cosd(lat)*cosd(dec));
+    events[riseKey] = events[setKey] = null;
+    if(cosw > 1){ events[flag]="night"; return; }   // never climbs that high
+    if(cosw < -1){ events[flag]="day"; return; }    // never drops that low
+    const w = acosd(cosw)/360;
+    events[riseKey] = dateOfJD(Jtr - w);
+    events[setKey]  = dateOfJD(Jtr + w);
+  };
+  solve(-0.833,"rise","set","polar");
+  solve(-6,"dawn","dusk","twiPolar");
+  return events;
+}
+
+function sunLongitude(d){                       // mean & true solar longitude
+  const w = 282.9404 + 4.70935e-5*d;
+  const e = 0.016709 - 1.151e-9*d;
+  const M = norm360(356.0470 + 0.9856002585*d);
+  const E = M + (e/rad)*sind(M)*(1 + e*cosd(M));
+  const xv = cosd(E) - e, yv = Math.sqrt(1-e*e)*sind(E);
+  const v = atan2d(yv,xv), r = Math.hypot(xv,yv);
+  return {L:norm360(w+M), lon:norm360(v+w), M, r};
+}
+
+function moonPosition(d){
+  const N = 125.1228 - 0.0529538083*d;
+  const i = 5.1454;
+  const w = 318.0634 + 0.1643573223*d;
+  const a = 60.2666;
+  const e = 0.054900;
+  const M = norm360(115.3654 + 13.0649929509*d);
+  let E = M + (e/rad)*sind(M)*(1 + e*cosd(M));
+  for(let k=0;k<3;k++){
+    E = E - (E - (e/rad)*sind(E) - M) / (1 - e*cosd(E));
+  }
+  const xv = a*(cosd(E) - e), yv = a*Math.sqrt(1-e*e)*sind(E);
+  const v = atan2d(yv,xv); let r = Math.hypot(xv,yv);
+  const xh = r*(cosd(N)*cosd(v+w) - sind(N)*sind(v+w)*cosd(i));
+  const yh = r*(sind(N)*cosd(v+w) + cosd(N)*sind(v+w)*cosd(i));
+  const zh = r*sind(v+w)*sind(i);
+  let lon = atan2d(yh,xh), lat = atan2d(zh,Math.hypot(xh,yh));
+
+  const s = sunLongitude(d);
+  const Ms = s.M, Mm = M;
+  const Lm = norm360(N + w + M), Ls = s.L;
+  const D = norm360(Lm - Ls), F = norm360(Lm - N);
+
+  lon += -1.274*sind(Mm-2*D) + 0.658*sind(2*D) - 0.186*sind(Ms)
+       -  0.059*sind(2*Mm-2*D) - 0.057*sind(Mm-2*D+Ms) + 0.053*sind(Mm+2*D)
+       +  0.046*sind(2*D-Ms) + 0.041*sind(Mm-Ms) - 0.035*sind(D)
+       -  0.031*sind(Mm+Ms) - 0.015*sind(2*F-2*D) + 0.011*sind(Mm-4*D);
+  lat += -0.173*sind(F-2*D) - 0.055*sind(Mm-F-2*D) - 0.046*sind(Mm+F-2*D)
+       +  0.033*sind(F+2*D) + 0.017*sind(2*Mm+F);
+  r   += -0.58*cosd(Mm-2*D) - 0.46*cosd(2*D);
+
+  lon = norm360(lon);
+  // equatorial
+  const ecl = 23.4393 - 3.563e-7*d;
+  const xg = r*cosd(lon)*cosd(lat), yg = r*sind(lon)*cosd(lat), zg = r*sind(lat);
+  const xe = xg, ye = yg*cosd(ecl) - zg*sind(ecl), ze = yg*sind(ecl) + zg*cosd(ecl);
+  const RA = norm360(atan2d(ye,xe)), Dec = atan2d(ze,Math.hypot(xe,ye));
+
+  const elong = norm360(lon - s.lon);
+  return {lon, lat, r, RA, Dec, elong, illum:(1-cosd(elong))/2, Ls:s.L,
+          km: r*6371.0};
+}
+
+function moonAltitude(date, lat, lon){
+  const d = jdOf(date) - 2451543.5;
+  const mp = moonPosition(d);
+  const UT = ((date.getTime()/3600000)%24 + 24)%24;
+  const GMST0 = norm360(mp.Ls + 180)/15;
+  const LST = norm360((GMST0 + UT + lon/15)*15);
+  const HA = norm360(LST - mp.RA);
+  // crude topocentric correction for parallax
+  const alt = asind(sind(lat)*sind(mp.Dec) + cosd(lat)*cosd(mp.Dec)*cosd(HA));
+  const par = asind(1/mp.r);
+  return alt - par*cosd(alt);
+}
+
+function moonEvents(midnightUTC, lat, lon){
+  const step = 10*60000, h0 = -0.583;
+  let prev = moonAltitude(new Date(midnightUTC), lat, lon) - h0;
+  let rise = null, set = null;
+  for(let t = step; t <= 24*3600000; t += step){
+    const cur = moonAltitude(new Date(midnightUTC+t), lat, lon) - h0;
+    if(prev <= 0 && cur > 0 && !rise) rise = refineCross(midnightUTC+t-step, midnightUTC+t, lat, lon, h0);
+    if(prev > 0 && cur <= 0 && !set)  set  = refineCross(midnightUTC+t-step, midnightUTC+t, lat, lon, h0);
+    prev = cur;
+  }
+  return {rise, set};
+}
+function refineCross(a,b,lat,lon,h0){
+  let fa = moonAltitude(new Date(a),lat,lon)-h0;
+  for(let k=0;k<20;k++){
+    const m = (a+b)/2, fm = moonAltitude(new Date(m),lat,lon)-h0;
+    if((fa<=0) === (fm<=0)){ a=m; fa=fm; } else { b=m; }
+  }
+  return new Date(Math.round((a+b)/2));
+}
+
+// Times when elongation crosses 0/90/180/270 inside a UTC window.
+function principalPhases(startUTC, endUTC){
+  const out = [];
+  const el = t => moonPosition(jdOf(new Date(t)) - 2451543.5).elong;
+  const step = 6*3600000;
+  let prev = el(startUTC);
+  for(let t = startUTC+step; t <= endUTC; t += step){
+    const cur = el(t);
+    for(const [target,name] of [[0,"New moon"],[90,"First quarter"],[180,"Full moon"],[270,"Last quarter"]]){
+      const p = norm360(prev - target), c = norm360(cur - target);
+      if(p > 270 && c < 90){            // wrapped past the target
+        let a = t-step, b = t;
+        for(let k=0;k<28;k++){
+          const m=(a+b)/2, v=norm360(el(m)-target);
+          if(v > 180) a=m; else b=m;
+        }
+        out.push({time:new Date(Math.round((a+b)/2)), name, target});
+      }
+    }
+    prev = cur;
+  }
+  return out;
+}
+
+/* ---------------------------------------------------- monotone cubic (PCHIP)
+   Knots flagged as tidal extremes get a zero derivative so the curve turns
+   over smoothly and never overshoots a marked high or low. */
+function makeSeries(points){
+  const n = points.length;
+  const xs = points.map(p=>p.t), ys = points.map(p=>p.h);
+  const dks = [], hs = [];
+  for(let i=0;i<n-1;i++){ hs[i] = xs[i+1]-xs[i]; dks[i] = (ys[i+1]-ys[i])/hs[i]; }
+  const m = new Array(n).fill(0);
+  for(let i=0;i<n;i++){
+    if(points[i].ext){ m[i] = 0; continue; }
+    if(i===0) m[i] = dks[0] ?? 0;
+    else if(i===n-1) m[i] = dks[n-2] ?? 0;
+    else if(dks[i-1]*dks[i] <= 0) m[i] = 0;
+    else {
+      const w1 = 2*hs[i] + hs[i-1], w2 = hs[i] + 2*hs[i-1];
+      m[i] = (w1+w2)/(w1/dks[i-1] + w2/dks[i]);
+    }
+  }
+  return {
+    min: Math.min(...ys), max: Math.max(...ys), first: xs[0], last: xs[n-1],
+    at(x){
+      if(x <= xs[0]) return ys[0];
+      if(x >= xs[n-1]) return ys[n-1];
+      let lo=0, hi=n-1;
+      while(hi-lo>1){ const mid=(lo+hi)>>1; if(xs[mid] <= x) lo=mid; else hi=mid; }
+      const h = xs[lo+1]-xs[lo], t = (x-xs[lo])/h;
+      const t2=t*t, t3=t2*t;
+      return (2*t3-3*t2+1)*ys[lo] + (t3-2*t2+t)*h*m[lo]
+           + (-2*t3+3*t2)*ys[lo+1] + (t3-t2)*h*m[lo+1];
+    }
+  };
+}
+
+/* ------------------------------------------------------------------ networking */
+async function getJSON(url, label){
+  let res;
+  try{ res = await fetch(url); }
+  catch(e){ throw new Error(`Could not reach ${label}. Check your connection — and if you are opening this file straight from disk, some browsers block the request; serve it over http instead.`); }
+  if(!res.ok) throw new Error(`${label} returned HTTP ${res.status}.`);
+  return res.json();
+}
+
+async function geocode(name){
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=8&language=en&format=json`;
+  const j = await getJSON(url, "the place-name lookup");
+  return (j.results||[]).map(r=>({
+    name:r.name,
+    admin:[r.admin1,r.country].filter(Boolean).join(", "),
+    lat:r.latitude, lon:r.longitude,
+    tz:r.timezone || "UTC",
+    country:r.country_code
+  }));
+}
+
+let stationCache = null;
+async function noaaStations(){
+  if(stationCache) return stationCache;
+  try{
+    const raw = localStorage.getItem("tideAlmanac.stations");
+    if(raw){
+      const c = JSON.parse(raw);
+      if(c.v === 2 && Date.now()-c.at < 30*86400000){ stationCache = c.list; return stationCache; }
+    }
+  }catch(e){}
+  const j = await getJSON("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=tidepredictions",
+                          "the NOAA station index");
+  stationCache = (j.stationList||[]).map(s=>({id:s.id,name:s.name,state:s.state,lat:s.lat,lon:s.lng}));
+  try{ localStorage.setItem("tideAlmanac.stations", JSON.stringify({v:2,at:Date.now(),list:stationCache})); }catch(e){}
+  return stationCache;
+}
+
+function distanceKm(a,b,c,d){
+  const R=6371, dl=(c-a)*rad, dg=(d-b)*rad;
+  const x = Math.sin(dl/2)**2 + Math.cos(a*rad)*Math.cos(c*rad)*Math.sin(dg/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+
+async function nearestStations(lat,lon,k=6){
+  const list = await noaaStations();
+  return list.map(s=>({...s, km: distanceKm(lat,lon,s.lat,s.lon)}))
+             .sort((a,b)=>a.km-b.km).slice(0,k);
+}
+
+const ymd = (y,m,d) => `${y}${pad2(m)}${pad2(d)}`;
+
+async function noaaRange(stationId, from, to, units){
+  const base = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=${stationId}`
+    + `&product=predictions&datum=MLLW&time_zone=lst_ldt&units=${units}&format=json&application=${APP}`
+    + `&begin_date=${from}&end_date=${to}`;
+  const hilo = await getJSON(base+"&interval=hilo", "NOAA tide predictions");
+  if(hilo.error) throw new Error("NOAA says: "+hilo.error.message);
+  let hourly = [];
+  try{
+    const h = await getJSON(base+"&interval=h", "NOAA tide predictions");
+    if(!h.error) hourly = h.predictions||[];
+  }catch(e){ /* subordinate stations only publish highs and lows */ }
+  return {
+    hilo:(hilo.predictions||[]).map(p=>({t:p.t, h:+p.v, type:p.type})),
+    hourly: hourly.map(p=>({t:p.t, h:+p.v}))
+  };
+}
+
+async function marineRange(lat, lon, fromISO, toISO, tz){
+  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`
+    + `&hourly=sea_level_height_msl&timezone=${encodeURIComponent(tz)}&cell_selection=sea`
+    + `&start_date=${fromISO}&end_date=${toISO}`;
+  const j = await getJSON(url, "the Open-Meteo marine model");
+  if(j.error) throw new Error("Open-Meteo says: "+(j.reason||"request rejected"));
+  const t = j.hourly?.time||[], v = j.hourly?.sea_level_height_msl||[];
+  const out = [];
+  for(let i=0;i<t.length;i++) if(v[i]!==null && v[i]!==undefined) out.push({t:t[i].replace("T"," "), h:v[i]});
+  if(!out.length) throw new Error("The marine model has no sea-level data for this point. Try a spot closer to open water, or a date within the last few years.");
+  return out;
+}
+
+// "YYYY-MM-DD HH:MM" -> minutes since the local midnight that starts `anchor`
+function parseWall(s){
+  return {y:+s.slice(0,4), m:+s.slice(5,7), d:+s.slice(8,10), hh:+s.slice(11,13), mm:+s.slice(14,16)};
+}
+function wallMinutes(s, y0, m0){
+  const p = parseWall(s);
+  const day = Math.round((Date.UTC(p.y,p.m-1,p.d) - Date.UTC(y0,m0-1,1))/86400000);
+  return day*1440 + p.hh*60 + p.mm;
+}
+
+/* Find highs and lows in an hourly series by parabolic fit. */
+function extremaFrom(points){
+  const out = [];
+  for(let i=1;i<points.length-1;i++){
+    const a=points[i-1].h, b=points[i].h, c=points[i+1].h;
+    if((b>=a && b>=c && (b>a||b>c)) || (b<=a && b<=c && (b<a||b<c))){
+      const den = a - 2*b + c;
+      const off = den===0 ? 0 : clamp(0.5*(a-c)/den, -0.5, 0.5);
+      const dt = points[i+1].t - points[i].t;
+      out.push({
+        t: points[i].t + off*dt,
+        h: b - 0.25*(a-c)*off,
+        type: (b>=a && b>=c) ? "H" : "L"
+      });
+    }
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------- month assembly */
+async function buildMonth(loc, year, month, opts, onProgress){
+  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const y0=year, m0=month;
+  const pad = 1;
+  const start = new Date(Date.UTC(year, month-1, 1-pad));
+  const end   = new Date(Date.UTC(year, month-1, days+pad));
+  const iso = d => d.toISOString().slice(0,10);
+
+  let hiloRaw, curveRaw, source, datum, precision;
+  onProgress?.("Fetching tide predictions…", .25);
+
+  if(loc.station){
+    const r = await noaaRange(loc.station.id,
+      ymd(start.getUTCFullYear(), start.getUTCMonth()+1, start.getUTCDate()),
+      ymd(end.getUTCFullYear(),   end.getUTCMonth()+1,   end.getUTCDate()),
+      opts.units);
+    hiloRaw = r.hilo.map(p=>({t:wallMinutes(p.t,y0,m0), h:p.h, type:p.type, ext:true}));
+    curveRaw = r.hourly.map(p=>({t:wallMinutes(p.t,y0,m0), h:p.h}));
+    source = `NOAA CO-OPS station ${loc.station.id} · ${loc.station.name}`;
+    datum = "MLLW";
+    precision = r.hourly.length ? "harmonic" : "harmonic (high/low only)";
+  } else {
+    const pts = await marineRange(loc.lat, loc.lon, iso(start), iso(end), loc.tz);
+    curveRaw = pts.map(p=>({t:wallMinutes(p.t,y0,m0), h:p.h}));
+    if(opts.units==="english") curveRaw.forEach(p=>p.h *= 3.28084);
+    hiloRaw = extremaFrom(curveRaw).map(p=>({...p, ext:true}));
+    source = "Open-Meteo marine model · 8 km grid";
+    datum = "MSL";
+    precision = "model";
+  }
+  if(!hiloRaw.length) throw new Error("No tide predictions came back for that month. Try another station or a different date.");
+
+  // merged knots: hourly samples plus the exact extremes
+  const knots = [...curveRaw.map(p=>({t:p.t,h:p.h,ext:false})), ...hiloRaw.map(p=>({t:p.t,h:p.h,ext:true}))]
+    .sort((a,b)=>a.t-b.t)
+    .filter((p,i,arr)=> i===0 || Math.abs(p.t-arr[i-1].t) > 0.5 || p.ext);
+  const series = makeSeries(knots);
+
+  // per-day astronomy and event grouping
+  onProgress?.("Computing sun and moon…", .7);
+  const unitLabel = opts.units==="english" ? "ft" : "m";
+  const out = [];
+  for(let d=1; d<=days; d++){
+    const midnight = fromLocal(year, month, d, 0, 0, loc.tz).getTime();
+    const sun = sunEvents(year, month, d, loc.lat, loc.lon, loc.tz);
+    const mn  = moonEvents(midnight, loc.lat, loc.lon);
+    const mid = moonPosition(jdOf(new Date(midnight+43200000)) - 2451543.5);
+    const toMin = date => date ? (date.getTime()-midnight)/60000 + tzOffset(date,loc.tz) - tzOffset(new Date(midnight),loc.tz) : null;
+    const lo = (d-1)*1440, hi = d*1440;
+    const events = hiloRaw.filter(p=>p.t>=lo && p.t<hi).map(p=>({min:p.t-lo, h:p.h, type:p.type}));
+    const dayVals = [];
+    for(let t=lo;t<=hi;t+=10) dayVals.push(series.at(t));
+    out.push({
+      day:d,
+      dow:new Date(Date.UTC(year,month-1,d)).getUTCDay(),
+      midnight,
+      events,
+      range: Math.max(...dayVals) - Math.min(...dayVals),
+      sun:{ rise:toMin(sun.rise), set:toMin(sun.set), dawn:toMin(sun.dawn), dusk:toMin(sun.dusk),
+            polar:sun.polar, twiPolar:sun.twiPolar },
+      moon:{ rise:toMin(mn.rise), set:toMin(mn.set), illum:mid.illum, elong:mid.elong, km:mid.km }
+    });
+  }
+
+  const monthStartUTC = fromLocal(year,month,1,0,0,loc.tz).getTime();
+  const monthEndUTC = fromLocal(year,month,days,23,59,loc.tz).getTime();
+  const phases = principalPhases(monthStartUTC, monthEndUTC).map(p=>{
+    const off = tzOffset(p.time, loc.tz);
+    const localMs = p.time.getTime() + off*60000;
+    const dt = new Date(localMs);
+    return {name:p.name, day:dt.getUTCDate(), hh:dt.getUTCHours(), mm:dt.getUTCMinutes(), target:p.target};
+  });
+
+  const allEvents = hiloRaw.filter(p=>p.t>=0 && p.t<days*1440);
+  const highest = allEvents.reduce((a,b)=>b.h>a.h?b:a, allEvents[0]);
+  const lowest  = allEvents.reduce((a,b)=>b.h<a.h?b:a, allEvents[0]);
+  const ranges = out.map(d=>d.range);
+  const spring = out[ranges.indexOf(Math.max(...ranges))];
+  const neap   = out[ranges.indexOf(Math.min(...ranges))];
+
+  return {
+    loc, year, month, days, series, days_: out, phases, source, datum, precision,
+    unitLabel, units:opts.units,
+    stats:{
+      highest:{...highest, day:Math.floor(highest.t/1440)+1, min:highest.t%1440},
+      lowest:{...lowest, day:Math.floor(lowest.t/1440)+1, min:lowest.t%1440},
+      meanRange: ranges.reduce((a,b)=>a+b,0)/ranges.length,
+      spring, neap, count: allEvents.length
+    }
+  };
+}
+
+/* ------------------------------------------------------------------- palettes */
+const THEMES = {
+  chart:{
+    bg:"#eef2ec", panel:"#e2e9e3", ink:"#12262e", soft:"#4a6a72", faint:"#8ba5a6",
+    rule:"#c3d2cc", water:"#2e6e7e", waterFill:"#b9d5d8", waterDeep:"#1b4a58",
+    night:"#c9d6d4", twilight:"#d9e2dd", sun:"#c8802c", moonLit:"#f4efe2",
+    moonDark:"#b9c8c6", weekend:"#e5ece5", bar:"#5f8f92"
+  },
+  night:{
+    bg:"#0b1e26", panel:"#102831", ink:"#dcece9", soft:"#8fb2b3", faint:"#5f8386",
+    rule:"#22434c", water:"#5fd3c0", waterFill:"#17414a", waterDeep:"#9fe8d9",
+    night:"#081920", twilight:"#0e242c", sun:"#f2b441", moonLit:"#f6f0dd",
+    moonDark:"#1b3a42", weekend:"#123039", bar:"#3f8f8a"
+  },
+  ink:{
+    bg:"#ffffff", panel:"#f4f4f4", ink:"#000000", soft:"#555555", faint:"#8a8a8a",
+    rule:"#c9c9c9", water:"#000000", waterFill:"#dcdcdc", waterDeep:"#000000",
+    night:"#e2e2e2", twilight:"#efefef", sun:"#000000", moonLit:"#ffffff",
+    moonDark:"#9a9a9a", weekend:"#f2f2f2", bar:"#6f6f6f"
+  }
+};
+
+/* --------------------------------------------------------------- SVG rendering */
+const L = {
+  W:1280, M:48, ROWH:32,
+  colDate:92, colMoon:30, colStrip:500, colSun:64, colEvents:400, colRange:84
+};
+function columns(){
+  const x0 = L.M;
+  const xMoon = x0 + L.colDate;
+  const xStrip = xMoon + L.colMoon + 4;
+  const xSun = xStrip + L.colStrip + 6;
+  const xEv = xSun + L.colSun + 4;
+  const xRange = xEv + L.colEvents;
+  return {x0,xMoon,xStrip,xSun,xEv,xRange, right:L.W-L.M};
+}
+
+function fmtTime(mins, clock){
+  if(mins==null || !isFinite(mins)) return "—";
+  const m = ((Math.round(mins) % 1440) + 1440) % 1440;
+  const h24 = Math.floor(m/60), mm = m%60;
+  if(clock==="12"){
+    const ap = h24>=12 ? "pm" : "am";
+    let h = h24%12; if(h===0) h=12;
+    return `${h}:${pad2(mm)}${ap}`;
+  }
+  return `${pad2(h24)}:${pad2(mm)}`;
+}
+const fmtH = (v,u) => {
+  const s = (u==="english" ? v.toFixed(1) : v.toFixed(2));
+  return /^-0\.?0*$/.test(s) ? s.slice(1) : s;   // no negative zero
+};
+
+function moonDisc(cx, cy, r, elong, T, flip){
+  // elong 0 = new, 180 = full. North of the equator the waxing moon is lit on
+  // the right; south of it the whole disc appears mirrored.
+  const lit = (1 - cosd(elong)) / 2;
+  let waxing = elong < 180;
+  if(flip) waxing = !waxing;
+  const dark = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${T.moonDark}"/>`;
+  const rim  = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${T.rule}" stroke-width=".6"/>`;
+  if(lit > 0.995) return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${T.moonLit}"/>` + rim;
+  if(lit < 0.005) return dark + rim;
+  // Outer semicircle on the lit side, closed by the terminator ellipse. The
+  // terminator bulges across the centre line when gibbous, back when crescent.
+  const rx = Math.max(r*Math.abs(2*lit - 1), 0.01);
+  const w  = waxing ? 1 : 0;
+  const ts = lit > 0.5 ? w : 1 - w;
+  return dark
+    + `<path d="M${cx} ${cy-r}A${r} ${r} 0 0 ${w} ${cx} ${cy+r}A${rx.toFixed(2)} ${r} 0 0 ${ts} ${cx} ${cy-r}Z" fill="${T.moonLit}"/>`
+    + rim;
+}
+
+function renderPoster(M, opts){
+  const T = THEMES[opts.theme] || THEMES.chart;
+  const C = columns();
+  const clock = opts.clock;
+  const days = M.days;
+  const south = M.loc.lat < 0;
+  const headerH = 128, ribbonH = 168, moonBarH = 26, legendH = 30;
+  const yRibbon = headerH + moonBarH + 14;
+  const yLegend = yRibbon + ribbonH + 16;
+  const yRows = yLegend + legendH + 10;
+  const rowsH = days * L.ROWH;
+  const footerH = 108;
+  const H = yRows + rowsH + footerH;
+  const s = [];
+  const p = (...x) => s.push(...x);
+
+  const t = (x,y,txt,{size=10,fill=T.ink,anchor="start",family="mono",weight=400,ls=0,style=""}={}) =>
+    `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="${family==="mono"?"IBM Plex Mono, ui-monospace, Menlo, monospace":"Bodoni Moda, Didot, Georgia, serif"}" `
+    + `font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}"`
+    + (ls?` letter-spacing="${ls}"`:"") + (style?` font-style="${style}"`:"") + `>${esc(txt)}</text>`;
+
+  p(`<rect width="${L.W}" height="${H}" fill="${T.bg}"/>`);
+
+  /* ---- header ---- */
+  const place = `${M.loc.name}${M.loc.admin?", "+M.loc.admin:""}`;
+  p(t(L.M, 74, place, {size:44, family:"serif", weight:400}));
+  p(t(L.M, 104, `${MONTHS[M.month-1]} ${M.year}`, {size:24, family:"serif", fill:T.soft, style:"italic"}));
+
+  const meta = [
+    ["source", M.loc.station ? `NOAA ${M.loc.station.id}` : "Open-Meteo model"],
+    ["datum", M.datum + " · heights in " + (M.units==="english"?"feet":"metres")],
+    ["clock", tzAbbr(M.loc.tz, new Date(M.days_[0].midnight)) + " · " + M.loc.tz],
+    ["position", `${Math.abs(M.loc.lat).toFixed(4)}°${M.loc.lat>=0?"N":"S"}  ${Math.abs(M.loc.lon).toFixed(4)}°${M.loc.lon>=0?"E":"W"}`]
+  ];
+  meta.forEach(([k,v],i)=>{
+    const y = 42 + i*17;
+    p(t(C.right-172, y, k, {size:9, fill:T.faint}));
+    p(t(C.right, y, v, {size:10, fill:T.soft, anchor:"end"}));
+  });
+  p(`<line x1="${L.M}" y1="${headerH-6}" x2="${C.right}" y2="${headerH-6}" stroke="${T.rule}" stroke-width="1"/>`);
+
+  /* ---- moon bar + month ribbon ---- */
+  const rx0 = L.M, rw = C.right - L.M;
+  const xOfMin = m => rx0 + (m/(days*1440))*rw;
+
+  const lo = M.series.min, hi = M.series.max;
+  const padY = (hi-lo)*0.10 || 0.4;
+  const yOf = h => yRibbon + ribbonH - ((h-(lo-padY))/((hi+padY)-(lo-padY)))*ribbonH;
+
+  const rMax = Math.max(...M.days_.map(d=>d.range));
+  p(`<rect x="${rx0}" y="${yRibbon}" width="${rw}" height="${ribbonH}" fill="${T.panel}" opacity=".55"/>`);
+
+  // One path carrying both fill and stroke: the closing edges lie on the frame,
+  // so the outline reads as the water surface and the file stays half the size.
+  let path = "";
+  for(let m=0; m<=days*1440; m+=20){
+    path += (m?"L":"M") + xOfMin(m).toFixed(1) + " " + yOf(M.series.at(m)).toFixed(1);
+  }
+  path += `L${xOfMin(days*1440).toFixed(1)} ${(yRibbon+ribbonH).toFixed(1)}L${rx0} ${(yRibbon+ribbonH).toFixed(1)}Z`;
+  p(`<path d="${path}" fill="${T.waterFill}" fill-opacity=".85" stroke="${T.water}" stroke-width="1" stroke-linejoin="round"/>`);
+  p(`<rect x="${rx0}" y="${yRibbon}" width="${rw}" height="${ribbonH}" fill="none" stroke="${T.rule}" stroke-width=".8"/>`);
+
+  // datum line at zero if it sits inside the frame
+  if(lo-padY < 0 && hi+padY > 0){
+    p(`<line x1="${rx0}" y1="${yOf(0).toFixed(1)}" x2="${C.right}" y2="${yOf(0).toFixed(1)}" stroke="${T.soft}" stroke-width=".6" stroke-dasharray="3 3"/>`);
+  }
+  p(t(rx0+5, yRibbon+12, `${fmtH(hi,M.units)} ${M.unitLabel}`, {size:11, fill:T.soft}));
+  p(t(rx0+5, yRibbon+ribbonH-6, `${fmtH(lo,M.units)}`, {size:11, fill:T.soft}));
+
+  // day ticks every 5 days
+  for(let d=1; d<=days; d++){
+    const x = xOfMin((d-1)*1440);
+    const major = (d===1 || d%5===0);
+    p(`<line x1="${x.toFixed(1)}" y1="${yRibbon+ribbonH}" x2="${x.toFixed(1)}" y2="${yRibbon+ribbonH+(major?6:3)}" stroke="${T.rule}" stroke-width=".8"/>`);
+    if(major) p(t(x+2, yRibbon+ribbonH+14, String(d), {size:9, fill:T.faint}));
+  }
+
+  // principal moon phases above the ribbon
+  M.phases.forEach(ph=>{
+    const x = xOfMin((ph.day-1)*1440 + ph.hh*60 + ph.mm);
+    const cx = clamp(x, rx0+10, C.right-10);
+    p(moonDisc(cx, headerH+12, 7, ph.target, T, south));
+    p(`<line x1="${x.toFixed(1)}" y1="${headerH+20}" x2="${x.toFixed(1)}" y2="${yRibbon}" stroke="${T.rule}" stroke-width=".6" stroke-dasharray="2 2"/>`);
+    const anchor = x > C.right-90 ? "end" : "start";
+    p(t(anchor==="end"?cx-11:cx+11, headerH+15.5, `${ph.name.toLowerCase()} ${ph.day} ${fmtTime(ph.hh*60+ph.mm, clock)}`,
+        {size:8.5, fill:T.soft, anchor}));
+  });
+
+  /* ---- legend ---- */
+  const ly = yLegend + 18;
+  let lx = L.M;
+  const legendItem = (glyph, label, w) => { p(glyph); p(t(lx+16, ly+3.5, label, {size:9, fill:T.soft})); lx += w; };
+  const sw = (fill) => `<rect x="${lx}" y="${ly-5}" width="11" height="9" fill="${fill}" stroke="${T.rule}" stroke-width=".5"/>`;
+  legendItem(sw(T.night), "night", 76);
+  legendItem(sw(T.twilight), "civil twilight", 120);
+  legendItem(`<path d="M ${lx} ${ly+3} q 5.5 -10 11 0" fill="none" stroke="${T.water}" stroke-width="1.3"/>`, "water level", 108);
+  legendItem(`<circle cx="${lx+5.5}" cy="${ly-0.5}" r="4" fill="none" stroke="${T.sun}" stroke-width="1.2"/>`, "sun, low rail", 128);
+  legendItem(`<circle cx="${lx+5.5}" cy="${ly-0.5}" r="3.4" fill="none" stroke="${T.soft}" stroke-width="1"/>`, "moon, high rail", 138);
+  legendItem(`<path d="M ${lx+5.5} ${ly-5} l 4.5 7 h -9 Z" fill="${T.waterDeep}"/>`, "high water", 100);
+  legendItem(`<path d="M ${lx+5.5} ${ly+3} l 4.5 -7 h -9 Z" fill="${T.water}" opacity=".65"/>`, "low water", 96);
+  legendItem(`<rect x="${lx}" y="${ly-4}" width="11" height="7" fill="${T.bar}" opacity=".7"/>`, "daily range", 100);
+  p(`<line x1="${L.M}" y1="${yRows-8}" x2="${C.right}" y2="${yRows-8}" stroke="${T.ink}" stroke-width="1"/>`);
+
+  /* ---- day rows ---- */
+  const stripX = C.xStrip, stripW = L.colStrip;
+  const xh = m => stripX + (clamp(m,0,1440)/1440)*stripW;
+  const rowsLo = Math.min(...M.days_.map(d=>{
+    let v=Infinity; for(let m=(d.day-1)*1440;m<=d.day*1440;m+=15) v=Math.min(v,M.series.at(m)); return v; }));
+  const rowsHi = Math.max(...M.days_.map(d=>{
+    let v=-Infinity; for(let m=(d.day-1)*1440;m<=d.day*1440;m+=15) v=Math.max(v,M.series.at(m)); return v; }));
+  const rSpan = (rowsHi-rowsLo) || 1;
+
+  M.days_.forEach((d,i)=>{
+    const y = yRows + i*L.ROWH;
+    const cy = y + L.ROWH/2;
+    const weekend = d.dow===0 || d.dow===6;
+    if(weekend) p(`<rect x="${L.M}" y="${y}" width="${C.right-L.M}" height="${L.ROWH}" fill="${T.weekend}"/>`);
+    p(`<line x1="${L.M}" y1="${y}" x2="${C.right}" y2="${y}" stroke="${T.rule}" stroke-width=".5"/>`);
+
+    // date
+    p(t(C.x0+20, cy+4, String(d.day), {size:15, fill:T.ink, weight:500, anchor:"end"}));
+    p(t(C.x0+28, cy+3.5, DOW3[d.dow].toLowerCase(), {size:10, fill:weekend?T.water:T.faint}));
+
+    // moon
+    p(moonDisc(C.xMoon+13, cy, 8.5, d.moon.elong, T, south));
+
+    // strip: night, twilight, curve
+    const sy = y+4, sh = L.ROWH-8;
+    p(`<rect x="${stripX}" y="${sy}" width="${stripW}" height="${sh}" fill="${T.panel}" opacity=".55"/>`);
+    const S = d.sun;
+    const band = (a,b,fill) => {
+      if(a==null||b==null) return;
+      const x1=xh(Math.min(a,b)), x2=xh(Math.max(a,b));
+      if(x2-x1 > 0.4) p(`<rect x="${x1.toFixed(1)}" y="${sy}" width="${(x2-x1).toFixed(1)}" height="${sh}" fill="${fill}"/>`);
+    };
+    if(S.polar === "night"){
+      p(`<rect x="${stripX}" y="${sy}" width="${stripW}" height="${sh}" fill="${T.night}"/>`);
+      band(S.dawn, S.dusk, T.twilight);          // polar night still gets a twilight glow
+    } else if(S.polar !== "day"){
+      if(S.dawn != null && S.dusk != null){
+        band(0, S.dawn, T.night); band(S.dusk, 1440, T.night);
+        band(S.dawn, S.rise, T.twilight); band(S.set, S.dusk, T.twilight);
+      } else {
+        // Sun rises and sets but never reaches civil twilight depth: white nights.
+        const fill = S.twiPolar === "day" ? T.twilight : T.night;
+        band(0, S.rise, fill); band(S.set, 1440, fill);
+      }
+    }
+    // hour ticks
+    for(let hh=6; hh<24; hh+=6){
+      const x = xh(hh*60);
+      p(`<line x1="${x.toFixed(1)}" y1="${sy}" x2="${x.toFixed(1)}" y2="${sy+sh}" stroke="${T.rule}" stroke-width=".4" opacity=".8"/>`);
+    }
+    // curve for the day
+    let dp = "";
+    for(let m=0; m<=1440; m+=10){
+      const v = M.series.at((d.day-1)*1440 + m);
+      const yy = sy + sh - ((v-rowsLo)/rSpan)*(sh-2) - 1;
+      dp += (m?"L":"M") + xh(m).toFixed(1) + " " + yy.toFixed(1);
+    }
+    dp += `L${(stripX+stripW).toFixed(1)} ${sy+sh}L${stripX} ${sy+sh}Z`;
+    p(`<path d="${dp}" fill="${T.waterFill}" fill-opacity=".7" stroke="${T.water}" stroke-width="1.1"/>`);
+    // sun markers
+    if(S.rise!=null) p(`<circle cx="${xh(S.rise).toFixed(1)}" cy="${(sy+sh).toFixed(1)}" r="3" fill="none" stroke="${T.sun}" stroke-width="1.2"/>`);
+    if(S.set!=null)  p(`<circle cx="${xh(S.set).toFixed(1)}" cy="${(sy+sh).toFixed(1)}" r="3" fill="${T.sun}"/>`);
+    // moon markers ride the top rail so the strip carries both bodies
+    if(d.moon.rise!=null) p(`<circle cx="${xh(d.moon.rise).toFixed(1)}" cy="${sy.toFixed(1)}" r="2.6" fill="none" stroke="${T.soft}" stroke-width="1"/>`);
+    if(d.moon.set!=null)  p(`<circle cx="${xh(d.moon.set).toFixed(1)}" cy="${sy.toFixed(1)}" r="2.6" fill="${T.soft}"/>`);
+    p(`<rect x="${stripX}" y="${sy}" width="${stripW}" height="${sh}" fill="none" stroke="${T.rule}" stroke-width=".5"/>`);
+
+    // sun times column
+    p(t(C.xSun, cy-1, S.rise!=null?fmtTime(S.rise,clock):(S.polar==="day"?"up all day":"no sunrise"), {size:9, fill:T.soft}));
+    p(t(C.xSun, cy+9.5, S.set!=null?fmtTime(S.set,clock):"", {size:9, fill:T.faint}));
+
+    // tide events
+    const ev = d.events.slice(0,5);
+    ev.forEach((e,j)=>{
+      const x = C.xEv + j*(L.colEvents/5);
+      const high = e.type==="H";
+      p(high
+        ? `<path d="M ${(x+4).toFixed(1)} ${cy-9} l 4 6.5 h -8 Z" fill="${T.waterDeep}"/>`
+        : `<path d="M ${(x+4).toFixed(1)} ${cy-2.5} l 4 -6.5 h -8 Z" fill="${T.water}" opacity=".7"/>`);
+      p(t(x+13, cy-3, fmtTime(e.min,clock), {size:10.5, fill:T.ink, weight:high?500:400}));
+      p(t(x+13, cy+9, fmtH(e.h,M.units), {size:10, fill:T.soft}));
+    });
+
+    // daily range bar
+    const bw = (d.range/(rMax||1))*(L.colRange-34);
+    p(`<rect x="${C.xRange}" y="${cy-4}" width="${Math.max(bw,0.5).toFixed(1)}" height="8" fill="${T.bar}" opacity=".72"/>`);
+    p(t(C.right, cy+3.5, fmtH(d.range,M.units), {size:9, fill:T.faint, anchor:"end"}));
+  });
+  p(`<line x1="${L.M}" y1="${yRows+rowsH}" x2="${C.right}" y2="${yRows+rowsH}" stroke="${T.ink}" stroke-width="1"/>`);
+
+  /* ---- footer ---- */
+  const fy = yRows + rowsH + 26;
+  const st = M.stats;
+  const cells = [
+    ["highest water", `${fmtH(st.highest.h,M.units)} ${M.unitLabel}`, `${MON3[M.month-1]} ${st.highest.day}, ${fmtTime(st.highest.min,clock)}`],
+    ["lowest water", `${fmtH(st.lowest.h,M.units)} ${M.unitLabel}`, `${MON3[M.month-1]} ${st.lowest.day}, ${fmtTime(st.lowest.min,clock)}`],
+    ["mean daily range", `${fmtH(st.meanRange,M.units)} ${M.unitLabel}`, `${st.count} tides this month`],
+    ["biggest spring", `${fmtH(st.spring.range,M.units)} ${M.unitLabel}`, `${MON3[M.month-1]} ${st.spring.day}`],
+    ["smallest neap", `${fmtH(st.neap.range,M.units)} ${M.unitLabel}`, `${MON3[M.month-1]} ${st.neap.day}`],
+    ["moon distance", `${Math.round(M.days_[Math.floor(M.days_.length/2)].moon.km).toLocaleString("en-US")} km`, "mid-month, centre to centre"]
+  ];
+  const cw = (C.right-L.M)/cells.length;
+  cells.forEach(([k,v,sub],i)=>{
+    const x = L.M + i*cw;
+    if(i) p(`<line x1="${x-10}" y1="${fy-14}" x2="${x-10}" y2="${fy+26}" stroke="${T.rule}" stroke-width=".6"/>`);
+    p(t(x, fy-4, k, {size:9, fill:T.faint}));
+    p(t(x, fy+15, v, {size:17, fill:T.ink, family:"serif"}));
+    p(t(x, fy+27, sub, {size:8.5, fill:T.soft}));
+  });
+  const credit = M.loc.station
+    ? `Tide predictions: NOAA CO-OPS station ${M.loc.station.id} ${M.loc.station.name}, ${M.loc.station.km.toFixed(0)} km away. Harmonic prediction, weather not included — not for navigation.`
+    : `Tide heights: Open-Meteo marine model, 8 km grid, referenced to mean sea level. Modelled rather than measured, unreliable in estuaries — not for navigation.`;
+  p(t(L.M, fy+56, credit, {size:9, fill:T.soft}));
+  p(t(C.right, fy+56, `Sun and moon computed locally · generated ${new Date().toISOString().slice(0,10)}`, {size:9, fill:T.faint, anchor:"end"}));
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" `
+       + `viewBox="0 0 ${L.W} ${Math.round(H)}" width="${L.W}" height="${Math.round(H)}" `
+       + `role="img" aria-label="${esc(place)} tide chart for ${MONTHS[M.month-1]} ${M.year}">`
+       + `__FONTS__` + s.join("") + `</svg>`;
+}
+
+/* ------------------------------------------------------------- font embedding */
+let fontCSSPromise = null;
+async function embeddedFontCSS(){
+  if(fontCSSPromise) return fontCSSPromise;
+  fontCSSPromise = (async ()=>{
+    const url = "https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=IBM+Plex+Mono:wght@400;500&display=swap";
+    const css = await (await fetch(url)).text();
+    const blocks = css.split("@font-face").slice(1)
+      .filter(b => /unicode-range:[^;]*U\+0000-00FF/i.test(b) || !/unicode-range/i.test(b));
+    let out = "";
+    for(const b of blocks){
+      const m = b.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
+      if(!m) continue;
+      const buf = await (await fetch(m[1])).arrayBuffer();
+      let bin = ""; const bytes = new Uint8Array(buf);
+      for(let i=0;i<bytes.length;i+=0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i,i+0x8000));
+      const b64 = btoa(bin);
+      out += "@font-face{" + b.slice(b.indexOf("{")+1, b.lastIndexOf("}"))
+              .replace(/url\(https:\/\/[^)]+\)\s*format\([^)]*\)/,
+                       `url(data:font/woff2;base64,${b64}) format("woff2")`)
+              .replace(/unicode-range:[^;]+;/,"") + "}";
+    }
+    return `<defs><style type="text/css">${out}</style></defs>`;
+  })().catch(e=>{
+    console.warn("Font embedding failed, falling back to system fonts.", e);
+    return "";
+  });
+  return fontCSSPromise;
+}
+
+async function finalSVG(svg, embed){
+  return svg.replace("__FONTS__", embed ? await embeddedFontCSS() : "");
+}
+
+/* ------------------------------------------------------------------ zip (store) */
+const CRC_TABLE = (()=>{
+  const t = new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c=n;
+    for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320 ^ (c>>>1) : c>>>1;
+    t[n]=c>>>0;
+  }
+  return t;
+})();
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c>>>8);
+  return (c ^ 0xFFFFFFFF)>>>0;
+}
+function zipStore(files){                 // [{name, text}]
+  const enc = new TextEncoder();
+  const now = new Date();
+  const dosTime = ((now.getHours()<<11) | (now.getMinutes()<<5) | (now.getSeconds()>>1)) & 0xFFFF;
+  const dosDate = (((now.getFullYear()-1980)<<9) | ((now.getMonth()+1)<<5) | now.getDate()) & 0xFFFF;
+  const chunks = [], central = [];
+  let offset = 0;
+  for(const f of files){
+    const name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true);
+    lh.setUint16(8,0,true); lh.setUint16(10,dosTime,true); lh.setUint16(12,dosDate,true);
+    lh.setUint32(14,crc,true); lh.setUint32(18,data.length,true); lh.setUint32(22,data.length,true);
+    lh.setUint16(26,name.length,true); lh.setUint16(28,0,true);
+    chunks.push(new Uint8Array(lh.buffer), name, data);
+
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0,0x02014b50,true); cd.setUint16(4,20,true); cd.setUint16(6,20,true);
+    cd.setUint16(8,0x0800,true); cd.setUint16(10,0,true);
+    cd.setUint16(12,dosTime,true); cd.setUint16(14,dosDate,true);
+    cd.setUint32(16,crc,true); cd.setUint32(20,data.length,true); cd.setUint32(24,data.length,true);
+    cd.setUint16(28,name.length,true); cd.setUint16(30,0,true); cd.setUint16(32,0,true);
+    cd.setUint16(34,0,true); cd.setUint16(36,0,true); cd.setUint32(38,0,true);
+    cd.setUint32(42,offset,true);
+    central.push(new Uint8Array(cd.buffer), name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((a,b)=>a+b.length,0);
+  const eo = new DataView(new ArrayBuffer(22));
+  eo.setUint32(0,0x06054b50,true); eo.setUint16(4,0,true); eo.setUint16(6,0,true);
+  eo.setUint16(8,files.length,true); eo.setUint16(10,files.length,true);
+  eo.setUint32(12,cdSize,true); eo.setUint32(16,offset,true); eo.setUint16(20,0,true);
+  return new Blob([...chunks, ...central, new Uint8Array(eo.buffer)], {type:"application/zip"});
+}
+
+/* ------------------------------------------------------------------ downloading */
+function download(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40);
+const fileBase = M => `tides-${slug(M.loc.name)}-${M.year}-${pad2(M.month)}`;
+
+async function svgToPng(svgText, scale=2){
+  const blob = new Blob([svgText], {type:"image/svg+xml;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  try{
+    const img = new Image();
+    img.decoding = "sync";
+    await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>rej(new Error("The browser could not rasterise the chart.")); img.src=url; });
+    const m = svgText.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+    const w = m ? +m[1] : 1280, h = m ? +m[2] : 1600;
+    const cv = document.createElement("canvas");
+    cv.width = w*scale; cv.height = h*scale;
+    const ctx = cv.getContext("2d");
+    ctx.scale(scale,scale);
+    ctx.drawImage(img,0,0,w,h);
+    return await new Promise(r=>cv.toBlob(r,"image/png"));
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* --------------------------------------------------------------------- the app */
+const state = {
+  loc:null, stations:[], month:null, svg:null,
+  year:new Date().getFullYear(), monthNum:new Date().getMonth()+1
+};
+
+function setStatus(msg, {error=false, progress=null}={}){
+  const box = el("status");
+  box.className = "status" + (error?" err":"");
+  box.innerHTML = esc(msg) + (progress!=null ? `<span class="bar"><i style="width:${Math.round(progress*100)}%"></i></span>` : "");
+}
+function setWarn(html){ el("warnbox").innerHTML = html ? `<div class="warn">${html}</div>` : ""; }
+
+function buildMonthButtons(){
+  const box = el("months");
+  box.innerHTML = "";
+  MON3.forEach((m,i)=>{
+    const b = document.createElement("button");
+    b.textContent = m;
+    b.setAttribute("aria-pressed", String(i+1===state.monthNum));
+    b.onclick = () => { state.monthNum = i+1; refreshMonthButtons(); render(); };
+    box.appendChild(b);
+  });
+}
+function refreshMonthButtons(){
+  [...el("months").children].forEach((b,i)=>b.setAttribute("aria-pressed", String(i+1===state.monthNum)));
+}
+
+async function doSearch(){
+  const q = el("q").value.trim();
+  if(!q) return;
+  setStatus("Looking up the place…", {progress:.2});
+  el("results").hidden = true;
+  try{
+    const list = await geocode(q);
+    if(!list.length){ setStatus(`Nothing matched “${q}”. Try a nearby town or a port name.`, {error:true}); return; }
+    if(list.length === 1){ await pickPlace(list[0]); return; }
+    const ul = el("results");
+    ul.innerHTML = "";
+    list.forEach(r=>{
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.innerHTML = `<span>${esc(r.name)}<span style="color:var(--ink-faint)">${r.admin?" — "+esc(r.admin):""}</span></span>`
+                  + `<span class="coord">${r.lat.toFixed(2)}, ${r.lon.toFixed(2)}</span>`;
+      b.onclick = () => { ul.hidden = true; pickPlace(r); };
+      li.appendChild(b); ul.appendChild(li);
+    });
+    ul.hidden = false;
+    setStatus(`${list.length} matches — pick one.`);
+  }catch(e){ setStatus(e.message, {error:true}); }
+}
+
+// Fill the station picker and choose one. `preferId` re-selects a station that
+// arrived in the URL; otherwise the nearest wins.
+async function populateStations(preferId){
+  try{ state.stations = await nearestStations(state.loc.lat, state.loc.lon, 8); }
+  catch(e){ state.stations = []; }
+  const box = el("stationbox"), sel = el("station");
+  const near = state.stations.filter(s => s.km < 200);
+  sel.innerHTML = "";
+  if(!near.length){
+    box.hidden = true;
+    state.loc.station = null;
+    return;
+  }
+  near.forEach(s=>{
+    const o = document.createElement("option");
+    o.value = s.id;
+    o.textContent = `${s.name}${s.state?", "+s.state:""} — ${s.km.toFixed(0)} km (NOAA ${s.id})`;
+    sel.appendChild(o);
+  });
+  const o = document.createElement("option");
+  o.value = "model";
+  o.textContent = "Open-Meteo marine model (global grid)";
+  sel.appendChild(o);
+  const chosen = preferId ? near.find(s=>s.id===preferId) : null;
+  state.loc.station = chosen || near[0];
+  sel.value = state.loc.station.id;
+  box.hidden = false;
+}
+
+async function pickPlace(place){
+  state.loc = {...place, station:null};
+  el("q").value = place.name;
+  setStatus("Finding the nearest tide station…", {progress:.4});
+  await populateStations();
+  render();
+}
+
+async function render(){
+  if(!state.loc) return;
+  const opts = {units:el("units").value, clock:el("clock").value, theme:el("theme").value};
+  el("dlSvg").disabled = el("dlPng").disabled = el("dlYear").disabled = true;
+  setWarn("");
+  try{
+    setStatus(`Building ${MONTHS[state.monthNum-1]} ${state.year}…`, {progress:.15});
+    const M = await buildMonth(state.loc, state.year, state.monthNum, opts,
+      (msg,p)=>setStatus(msg,{progress:p}));
+    state.month = M;
+    setStatus("Drawing…", {progress:.9});
+    const svg = renderPoster(M, opts);
+    state.svg = svg;
+    el("stage").innerHTML = svg.replace("__FONTS__","");
+    el("dlSvg").disabled = el("dlPng").disabled = el("dlYear").disabled = false;
+    setStatus(`${M.stats.count} tides · ${M.source} · ${M.loc.tz}`);
+    if(!M.loc.station){
+      setWarn("No NOAA station within 200 km, so this uses the Open-Meteo marine model: an 8 km grid referenced to mean sea level. It is reasonable on open coast and unreliable in estuaries and narrow inlets. The model only covers recent years plus about a week ahead.");
+    } else if(M.precision.includes("high/low only")){
+      setWarn("This is a subordinate station, so NOAA publishes only the high and low waters. The curve between them is interpolated.");
+    }
+    writeHash();
+  }catch(e){
+    console.error(e);
+    setStatus(e.message, {error:true});
+    el("stage").innerHTML = `<div class="empty">Nothing to draw yet.</div>`;
+  }
+}
+
+function writeHash(){
+  if(!state.loc) return;
+  const p = new URLSearchParams({
+    q: state.loc.name, lat: state.loc.lat.toFixed(4), lon: state.loc.lon.toFixed(4),
+    tz: state.loc.tz, m: `${state.year}-${pad2(state.monthNum)}`,
+    u: el("units").value, t: el("theme").value
+  });
+  if(state.loc.admin) p.set("a", state.loc.admin);
+  if(state.loc.station) p.set("s", state.loc.station.id);
+  history.replaceState(null,"","#"+p.toString());
+}
+
+async function readHash(){
+  const h = location.hash.slice(1);
+  if(!h) return false;
+  const p = new URLSearchParams(h);
+  if(!p.get("lat") || !p.get("lon")) return false;
+  el("units").value = p.get("u") || "metric";
+  el("theme").value = p.get("t") || "chart";
+  const [y,m] = (p.get("m")||"").split("-");
+  if(y && m){ state.year = +y; state.monthNum = +m; }
+  el("year").value = state.year; refreshMonthButtons();
+  el("q").value = p.get("q") || "";
+  state.loc = {name:p.get("q")||"Location", admin:p.get("a")||"", lat:+p.get("lat"), lon:+p.get("lon"),
+               tz:p.get("tz")||"UTC", station:null};
+  await populateStations(p.get("s"));
+  if(!p.get("s")) state.loc.station = null;   // the link asked for the model
+  await render();
+  return true;
+}
+
+/* ------------------------------------------------------------------ wiring up */
+el("go").onclick = doSearch;
+el("q").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
+el("station").onchange = e => {
+  state.loc.station = e.target.value === "model" ? null : state.stations.find(s=>s.id === e.target.value);
+  render();
+};
+el("year").value = state.year;
+el("year").onchange = e => { state.year = clamp(+e.target.value||state.year, 1990, 2035); e.target.value = state.year; render(); };
+el("prevYear").onclick = () => { state.year--; el("year").value = state.year; render(); };
+el("nextYear").onclick = () => { state.year++; el("year").value = state.year; render(); };
+["units","clock","theme"].forEach(id => el(id).onchange = render);
+buildMonthButtons();
+
+el("dlSvg").onclick = async () => {
+  const btn = el("dlSvg"); btn.disabled = true;
+  try{
+    setStatus("Preparing the SVG…", {progress:.5});
+    const svg = await finalSVG(state.svg, el("embedFonts").checked);
+    download(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}), fileBase(state.month)+".svg");
+    setStatus("Saved.");
+  }catch(e){ setStatus(e.message,{error:true}); }
+  btn.disabled = false;
+};
+
+el("dlPng").onclick = async () => {
+  const btn = el("dlPng"); btn.disabled = true;
+  try{
+    setStatus("Rasterising…", {progress:.5});
+    const svg = await finalSVG(state.svg, true);
+    const png = await svgToPng(svg, 2);
+    download(png, fileBase(state.month)+".png");
+    setStatus("Saved.");
+  }catch(e){ setStatus(e.message,{error:true}); }
+  btn.disabled = false;
+};
+
+el("dlYear").onclick = async () => {
+  const btn = el("dlYear"); btn.disabled = true;
+  const opts = {units:el("units").value, clock:el("clock").value, theme:el("theme").value};
+  const files = [];
+  try{
+    const fonts = el("embedFonts").checked ? await embeddedFontCSS() : "";
+    for(let m=1; m<=12; m++){
+      setStatus(`Building ${MONTHS[m-1]} ${state.year} — ${m} of 12…`, {progress:m/13});
+      const M = await buildMonth(state.loc, state.year, m, opts);
+      files.push({name:`${fileBase(M)}.svg`, text: renderPoster(M, opts).replace("__FONTS__", fonts)});
+    }
+    download(zipStore(files), `tides-${slug(state.loc.name)}-${state.year}-svg.zip`);
+    setStatus(`Saved 12 charts for ${state.year}.`);
+  }catch(e){
+    setStatus(`Stopped after ${files.length} months: ${e.message}`, {error:true});
+    if(files.length) download(zipStore(files), `tides-${slug(state.loc.name)}-${state.year}-partial.zip`);
+  }
+  btn.disabled = false;
+};
+
+readHash().then(ok => {
+  if(!ok) setStatus("Ready. Try Brighton, Monterey, Halifax, Broome…");
+});
+window.addEventListener("hashchange", readHash);
+</script>
+</body>
+</html>
