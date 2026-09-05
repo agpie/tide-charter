@@ -317,7 +317,7 @@
   <div>
     <h3>Where the numbers come from</h3>
     <p>In United States waters the chart uses NOAA CO-OPS harmonic tide predictions from the nearest official station, referenced to mean lower low water.</p>
-    <p>Everywhere else it falls back to the Open-Meteo marine model, an 8&nbsp;km global grid referenced to mean sea level. Useful for open coast, unreliable in estuaries and narrow inlets.</p>
+    <p>Everywhere else it reads about a year of sea level from the Open-Meteo marine model, fits the standard tidal constituents to it, and predicts the month from those. The 8&nbsp;km grid is useful on open coast and unreliable in estuaries and narrow inlets.</p>
   </div>
   <div>
     <h3>Not for navigation</h3>
@@ -573,13 +573,114 @@ function makeSeries(points){
   };
 }
 
+/* ------------------------------------------------------- harmonic tide analysis
+   The Open-Meteo forecast window only reaches about 92 days back and 8 days
+   ahead, so asking it for an arbitrary calendar month fails. Instead we pull a
+   long stretch of past sea level, least-squares fit the standard tidal
+   constituents to it, and predict any month from those constants — which is how
+   tide prediction actually works. Fitting also strips out surge and pressure
+   effects, leaving the astronomical tide. */
+
+const EPOCH_MS = Date.UTC(2000,0,1);      // all harmonic arguments count from here
+
+// Angular speeds in degrees per mean solar hour, ordered by the amplitude these
+// constituents typically carry so the important ones win ties.
+const CONSTITUENTS = [
+  {n:"M2",  s:28.9841042}, {n:"S2",  s:30.0000000}, {n:"N2",  s:28.4397295},
+  {n:"K1",  s:15.0410686}, {n:"O1",  s:13.9430356}, {n:"K2",  s:30.0821373},
+  {n:"P1",  s:14.9589314}, {n:"Q1",  s:13.3986609}, {n:"M4",  s:57.9682084},
+  {n:"MS4", s:58.9841042}, {n:"MN4", s:57.4238337}, {n:"M6",  s:86.9523127},
+  {n:"NU2", s:28.5125831}, {n:"MU2", s:27.9682084}, {n:"2N2", s:27.8953548},
+  {n:"L2",  s:29.5284789}, {n:"T2",  s:29.9589333}, {n:"J1",  s:15.5854433},
+  {n:"Mf",  s:1.0980331},  {n:"Mm",  s:0.5443747},
+  {n:"Sa",  s:0.0410686},  {n:"Ssa", s:0.0821373}
+];
+
+// Rayleigh criterion: two constituents can only be told apart if their
+// frequencies differ by more than one cycle across the whole record.
+function selectConstituents(hours){
+  const res = 360/hours, out = [];
+  for(const c of CONSTITUENTS){
+    if(360/c.s > hours) continue;                       // period outlasts the record
+    if(out.some(o => Math.abs(o.s - c.s) < res)) continue;
+    out.push(c);
+  }
+  return out;
+}
+
+function solveSym(A, b){
+  const n = b.length;
+  const M = A.map((r,i)=>{ const row = new Float64Array(n+1); row.set(r); row[n]=b[i]; return row; });
+  for(let c=0;c<n;c++){
+    let piv=c;
+    for(let r=c+1;r<n;r++) if(Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv=r;
+    if(Math.abs(M[piv][c]) < 1e-12) return null;
+    [M[c],M[piv]] = [M[piv],M[c]];
+    const d = M[c][c];
+    for(let j=c;j<=n;j++) M[c][j] /= d;
+    for(let r=0;r<n;r++){
+      if(r===c) continue;
+      const f = M[r][c];
+      if(!f) continue;
+      for(let j=c;j<=n;j++) M[r][j] -= f*M[c][j];
+    }
+  }
+  return Array.from({length:n},(_,i)=>M[i][n]);
+}
+
+// points: {t: hours since EPOCH_MS, h: metres}
+function harmonicFit(points){
+  const span = points[points.length-1].t - points[0].t;
+  const cons = selectConstituents(span);
+  const n = 2*cons.length + 1;
+  const A = Array.from({length:n},()=>new Float64Array(n));
+  const b = new Float64Array(n);
+  const row = new Float64Array(n);
+  for(const p of points){
+    row[0] = 1;
+    for(let i=0;i<cons.length;i++){
+      const a = cons[i].s*p.t*rad;
+      row[1+2*i] = Math.cos(a); row[2+2*i] = Math.sin(a);
+    }
+    for(let i=0;i<n;i++){
+      b[i] += row[i]*p.h;
+      const Ai = A[i], ri = row[i];
+      for(let j=i;j<n;j++) Ai[j] += ri*row[j];
+    }
+  }
+  for(let i=0;i<n;i++){ A[i][i] *= (1 + 1e-10); for(let j=0;j<i;j++) A[i][j] = A[j][i]; }
+  const x = solveSym(A, b);
+  if(!x) return null;
+  const parts = cons.map((c,i)=>({name:c.n, s:c.s, C:x[1+2*i], S:x[2+2*i],
+                                  amp:Math.hypot(x[1+2*i], x[2+2*i])}));
+  const fit = {mean:x[0], parts, days:Math.round(span/24), count:points.length};
+  let ss = 0;
+  for(const p of points){ const e = p.h - tideAt(fit, p.t); ss += e*e; }
+  fit.rms = Math.sqrt(ss/points.length);
+  fit.M2 = parts.find(c=>c.name==="M2")?.amp ?? 0;
+  return fit;
+}
+
+function tideAt(fit, tHours){
+  let v = fit.mean;
+  for(const c of fit.parts){ const a = c.s*tHours*rad; v += c.C*Math.cos(a) + c.S*Math.sin(a); }
+  return v;
+}
+
 /* ------------------------------------------------------------------ networking */
 async function getJSON(url, label){
   let res;
   try{ res = await fetch(url); }
   catch(e){ throw new Error(`Could not reach ${label}. Check your connection — and if you are opening this file straight from disk, some browsers block the request; serve it over http instead.`); }
-  if(!res.ok) throw new Error(`${label} returned HTTP ${res.status}.`);
-  return res.json();
+  let body = null;
+  try{ body = await res.json(); }catch(e){}
+  if(!res.ok){
+    // Open-Meteo explains itself in the body of a 400; NOAA nests it under error.
+    const why = body?.reason || body?.error?.message;
+    throw new Error(`${label} refused the request (HTTP ${res.status})${why ? " — "+why : "."}`);
+  }
+  if(body?.error === true && body?.reason) throw new Error(`${label}: ${body.reason}`);
+  return body;
 }
 
 async function geocode(name){
@@ -642,17 +743,44 @@ async function noaaRange(stationId, from, to, units){
   };
 }
 
-async function marineRange(lat, lon, fromISO, toISO, tz){
-  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`
-    + `&hourly=sea_level_height_msl&timezone=${encodeURIComponent(tz)}&cell_selection=sea`
-    + `&start_date=${fromISO}&end_date=${toISO}`;
-  const j = await getJSON(url, "the Open-Meteo marine model");
-  if(j.error) throw new Error("Open-Meteo says: "+(j.reason||"request rejected"));
-  const t = j.hourly?.time||[], v = j.hourly?.sea_level_height_msl||[];
-  const out = [];
-  for(let i=0;i<t.length;i++) if(v[i]!==null && v[i]!==undefined) out.push({t:t[i].replace("T"," "), h:v[i]});
-  if(!out.length) throw new Error("The marine model has no sea-level data for this point. Try a spot closer to open water, or a date within the last few years.");
-  return out;
+let harmonicCache = {key:null, fit:null};
+
+async function marineHarmonics(lat, lon, onProgress){
+  const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  if(harmonicCache.key === key) return harmonicCache.fit;
+  const iso = d => d.toISOString().slice(0,10);
+  const end = new Date(Date.now() - 4*86400000);        // the archive lags a few days
+  // A long record separates K2 from S2 and P1 from K1; the short forecast
+  // window is the fallback when the archive host is unavailable.
+  const attempts = [
+    {host:"https://historical-forecast-api.open-meteo.com/v1/marine", days:400, label:"the Open-Meteo marine archive"},
+    {host:"https://marine-api.open-meteo.com/v1/marine", days:85, label:"the Open-Meteo marine forecast"}
+  ];
+  let lastErr = null;
+  for(const a of attempts){
+    try{
+      onProgress?.(`Reading ${a.days} days of sea level…`, .3);
+      const start = new Date(end.getTime() - a.days*86400000);
+      const url = `${a.host}?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`
+        + `&hourly=sea_level_height_msl&timezone=GMT&cell_selection=sea`
+        + `&start_date=${iso(start)}&end_date=${iso(end)}`;
+      const j = await getJSON(url, a.label);
+      const T = j.hourly?.time || [], V = j.hourly?.sea_level_height_msl || [];
+      const pts = [];
+      for(let i=0;i<T.length;i++){
+        if(V[i] === null || V[i] === undefined) continue;
+        pts.push({t:(Date.parse(T[i]+":00Z") - EPOCH_MS)/3600000, h:V[i]});
+      }
+      if(pts.length < 600) throw new Error(`${a.label} returned almost no sea-level data here. The ocean grid is 8 km, so points well inside a bay, river or lake fall outside it — try a spot on the open coast.`);
+      onProgress?.("Fitting tidal constituents…", .55);
+      const fit = harmonicFit(pts);
+      if(!fit) throw new Error("The tidal fit did not converge for this point.");
+      fit.label = a.label;
+      harmonicCache = {key, fit};
+      return fit;
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr;
 }
 
 // "YYYY-MM-DD HH:MM" -> minutes since the local midnight that starts `anchor`
@@ -693,7 +821,7 @@ async function buildMonth(loc, year, month, opts, onProgress){
   const end   = new Date(Date.UTC(year, month-1, days+pad));
   const iso = d => d.toISOString().slice(0,10);
 
-  let hiloRaw, curveRaw, source, datum, precision;
+  let hiloRaw, curveRaw, source, datum, precision, harmonics = null;
   onProgress?.("Fetching tide predictions…", .25);
 
   if(loc.station){
@@ -707,13 +835,23 @@ async function buildMonth(loc, year, month, opts, onProgress){
     datum = "MLLW";
     precision = r.hourly.length ? "harmonic" : "harmonic (high/low only)";
   } else {
-    const pts = await marineRange(loc.lat, loc.lon, iso(start), iso(end), loc.tz);
-    curveRaw = pts.map(p=>({t:wallMinutes(p.t,y0,m0), h:p.h}));
-    if(opts.units==="english") curveRaw.forEach(p=>p.h *= 3.28084);
+    const fit = await marineHarmonics(loc.lat, loc.lon, onProgress);
+    // Walk the month day by day so each local midnight is anchored correctly
+    // across daylight-saving changes, then sample every 10 minutes.
+    const k = opts.units === "english" ? 3.28084 : 1;
+    curveRaw = [];
+    for(let d = 1-pad; d <= days+pad; d++){
+      const midUTC = fromLocal(year, month, d, 0, 0, loc.tz).getTime();
+      const base = (d-1)*1440;
+      for(let mm = 0; mm < 1440; mm += 10){
+        curveRaw.push({t: base+mm, h: tideAt(fit, (midUTC + mm*60000 - EPOCH_MS)/3600000) * k});
+      }
+    }
     hiloRaw = extremaFrom(curveRaw).map(p=>({...p, ext:true}));
-    source = "Open-Meteo marine model · 8 km grid";
+    source = `Open-Meteo marine model · ${fit.parts.length} constituents fitted to ${fit.days} days`;
     datum = "MSL";
-    precision = "model";
+    precision = "harmonic fit";
+    harmonics = fit;
   }
   if(!hiloRaw.length) throw new Error("No tide predictions came back for that month. Try another station or a different date.");
 
@@ -766,7 +904,7 @@ async function buildMonth(loc, year, month, opts, onProgress){
   const neap   = out[ranges.indexOf(Math.min(...ranges))];
 
   return {
-    loc, year, month, days, series, days_: out, phases, source, datum, precision,
+    loc, year, month, days, series, days_: out, phases, source, datum, precision, harmonics,
     unitLabel, units:opts.units,
     stats:{
       highest:{...highest, day:Math.floor(highest.t/1440)+1, min:highest.t%1440},
@@ -1062,11 +1200,13 @@ function renderPoster(M, opts){
     p(t(x, fy+15, v, {size:17, fill:T.ink, family:"serif"}));
     p(t(x, fy+27, sub, {size:8.5, fill:T.soft}));
   });
+  const HF = M.harmonics;
   const credit = M.loc.station
     ? `Tide predictions: NOAA CO-OPS station ${M.loc.station.id} ${M.loc.station.name}, ${M.loc.station.km.toFixed(0)} km away. Harmonic prediction, weather not included — not for navigation.`
-    : `Tide heights: Open-Meteo marine model, 8 km grid, referenced to mean sea level. Modelled rather than measured, unreliable in estuaries — not for navigation.`;
-  p(t(L.M, fy+56, credit, {size:9, fill:T.soft}));
-  p(t(C.right, fy+56, `Sun and moon computed locally · generated ${new Date().toISOString().slice(0,10)}`, {size:9, fill:T.faint, anchor:"end"}));
+    : `Tide predicted from ${HF ? HF.parts.length : 0} harmonic constituents fitted to ${HF ? HF.days : 0} days of the Open-Meteo 8 km ocean model`
+      + `${HF ? `, M2 amplitude ${HF.M2.toFixed(2)} m, residual ${HF.rms.toFixed(2)} m` : ""} — not for navigation.`;
+  p(t(L.M, fy+52, credit, {size:9, fill:T.soft}));
+  p(t(C.right, fy+66, `Sun and moon computed locally · generated ${new Date().toISOString().slice(0,10)}`, {size:9, fill:T.faint, anchor:"end"}));
 
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" `
        + `viewBox="0 0 ${L.W} ${Math.round(H)}" width="${L.W}" height="${Math.round(H)}" `
@@ -1293,7 +1433,10 @@ async function render(){
     el("dlSvg").disabled = el("dlPng").disabled = el("dlYear").disabled = false;
     setStatus(`${M.stats.count} tides · ${M.source} · ${M.loc.tz}`);
     if(!M.loc.station){
-      setWarn("No NOAA station within 200 km, so this uses the Open-Meteo marine model: an 8 km grid referenced to mean sea level. It is reasonable on open coast and unreliable in estuaries and narrow inlets. The model only covers recent years plus about a week ahead.");
+      const H = M.harmonics;
+      setWarn(`No NOAA station within 200 km, so this is a harmonic prediction: ${H.parts.length} tidal constituents fitted to ${H.days} days of the Open-Meteo 8 km ocean model, from ${esc(H.label)}. `
+        + `That lets any month be predicted, but the underlying grid is coarse — reasonable on open coast, unreliable in estuaries and narrow inlets. Heights are referenced to mean sea level, not chart datum.`
+        + (H.days < 180 ? " <strong>Only a short record was available, so S2 and K2 could not be separated and accuracy is reduced.</strong>" : ""));
     } else if(M.precision.includes("high/low only")){
       setWarn("This is a subordinate station, so NOAA publishes only the high and low waters. The curve between them is interpolated.");
     }
