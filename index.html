@@ -7,7 +7,7 @@
 <meta name="description" content="Look up a coastal location and generate an A1 tide poster: twelve continuous monthly waves carrying every high and low, sunrise, sunset and moon phase. Exports as SVG.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#0f3049;
@@ -39,7 +39,7 @@
     display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;
   }
   .mast h1{
-    font-family:Cinzel,Georgia,serif;
+    font-family:'IM Fell English',Georgia,serif;
     font-weight:400;
     font-size:clamp(30px,5vw,50px);
     letter-spacing:.06em;
@@ -94,7 +94,7 @@
   .empty{padding:80px 24px;text-align:center;color:var(--faint);font-size:13px}
 
   .keys{margin-top:28px;padding-top:20px;border-top:1px solid var(--rule)}
-  .keys h3{font-family:Cinzel,Georgia,serif;font-weight:400;letter-spacing:.1em;font-size:15px;margin:0 0 4px}
+  .keys h3{font-family:'IM Fell English',Georgia,serif;font-weight:400;letter-spacing:.1em;font-size:15px;margin:0 0 4px}
   .keys p{margin:0 0 16px;color:var(--soft);font-size:13px;max-width:64ch}
   .keygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
   .keygrid .k{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--rule);padding:9px 12px}
@@ -162,9 +162,20 @@
   </label>
   <label>Palette
     <select id="theme">
-      <option value="navy">Navy</option>
-      <option value="paper">Chart paper</option>
-      <option value="ink">Ink on white</option>
+      <option value="chart">Chart blue</option>
+      <option value="bone">Bone</option>
+      <option value="sepia">Sepia</option>
+      <option value="slate">Slate</option>
+    </select>
+  </label>
+  <label>Border
+    <select id="border">
+      <option value="graduated">Graduated</option>
+      <option value="cable">Cable</option>
+      <option value="scallop">Scallop</option>
+      <option value="dentil">Dentil</option>
+      <option value="fleuron">Fleuron</option>
+      <option value="none">None</option>
     </select>
   </label>
   <label><input type="checkbox" id="embedFonts" checked> Embed fonts in exports</label>
@@ -192,7 +203,7 @@
 <footer class="notes">
   <div>
     <h3>Reading the sheet</h3>
-    <p>Each band is one month drawn as a single unbroken trace, about 58 tide cycles wide. High water carries its time above and height below; low water carries height above and time below, so the number nearest the wave is always a height.</p>
+    <p>Each band is one month drawn as a single unbroken trace, about 58 tide cycles wide. Every high and low carries its height nearest the wave and its time further out, held a fixed distance from the peak so the reading band rises and falls with the spring&ndash;neap rhythm.</p>
   </div>
   <div>
     <h3>Where the numbers come from</h3>
@@ -214,6 +225,7 @@
 "use strict";
 const MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
+const MON3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DOW3 = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const APP = "TideAlmanac";
 
@@ -628,6 +640,11 @@ async function marineHarmonics(lat, lon, onProgress){
 function parseWall(s){
   return {y:+s.slice(0,4), m:+s.slice(5,7), d:+s.slice(8,10), hh:+s.slice(11,13), mm:+s.slice(14,16)};
 }
+function wallMinutes(s, y0, m0){
+  const p = parseWall(s);
+  const day = Math.round((Date.UTC(p.y,p.m-1,p.d) - Date.UTC(y0,m0-1,1))/86400000);
+  return day*1440 + p.hh*60 + p.mm;
+}
 
 /* Find highs and lows in an hourly series by parabolic fit. */
 function extremaFrom(points){
@@ -660,15 +677,13 @@ function fmtTime(mins, clock){
   }
   return `${pad2(h24)}:${pad2(mm)}`;
 }
-const fmtH = (v,u) => {
-  const s = (u === "english" ? v.toFixed(1) : v.toFixed(1));
+const fmtH = v => {
+  const s = v.toFixed(1);
   return /^-0\.?0*$/.test(s) ? s.slice(1) : s;      // no negative zero
 };
 
 /* ------------------------------------------------------------- year assembly
-   One continuous tide trace per month, twelve months on one A1 sheet. Every
-   high and low carries its time and height; sunrise, sunset and the principal
-   moon phases ride the curve as coloured dots. */
+   One continuous tide trace per month, twelve months on one A1 sheet. */
 
 const DAYS_IN = (y,m) => new Date(Date.UTC(y,m,0)).getUTCDate();
 const isLeap = y => DAYS_IN(y,2) === 29;
@@ -679,16 +694,13 @@ async function buildYear(loc, year, opts, onProgress){
   // Local midnight of every day, padded one day either side, as UTC ms. All
   // minute arithmetic in the poster counts from local midnight on 1 January.
   const midnights = new Float64Array(nDays + 2);
-  for(let i = -1; i <= nDays; i++){
-    midnights[i+1] = fromLocal(year, 1, 1+i, 0, 0, loc.tz).getTime();
-  }
-  const midnightOf = dayIdx => midnights[clamp(dayIdx,-1,nDays) + 1];
+  for(let i = -1; i <= nDays; i++) midnights[i+1] = fromLocal(year, 1, 1+i, 0, 0, loc.tz).getTime();
+  const midnightOf = d => midnights[clamp(d,-1,nDays) + 1];
   const minToHours = m => {
     const day = Math.floor(m/1440);
     return (midnightOf(day) + (m - day*1440)*60000 - EPOCH_MS)/3600000;
   };
 
-  // month start in minutes-since-1-Jan, and day count
   const months = [];
   let acc = 0;
   for(let m = 1; m <= 12; m++){
@@ -698,7 +710,7 @@ async function buildYear(loc, year, opts, onProgress){
   }
 
   const k = opts.units === "english" ? 3.28084 : 1;
-  let atMin, extremes, source, datum, precision, harmonics = null;
+  let atMin, extremes, source, datum, harmonics = null;
 
   onProgress?.("Fetching tide predictions…", .2);
   if(loc.station){
@@ -718,7 +730,6 @@ async function buildYear(loc, year, opts, onProgress){
     extremes = knots;
     source = `NOAA CO-OPS station ${loc.station.id} · ${loc.station.name}`;
     datum = "MLLW";
-    precision = "harmonic prediction";
   } else {
     const fit = await marineHarmonics(loc.lat, loc.lon, onProgress);
     harmonics = fit;
@@ -729,10 +740,8 @@ async function buildYear(loc, year, opts, onProgress){
     extremes = extremaFrom(sampled).map(p=>({...p, ext:true}));
     source = `Open-Meteo marine model · ${fit.parts.length} constituents fitted to ${fit.days} days`;
     datum = "MSL";
-    precision = "harmonic fit";
   }
 
-  // sun, per day
   onProgress?.("Computing sun and moon…", .78);
   const sun = [];
   for(let i = 0; i < nDays; i++){
@@ -740,19 +749,17 @@ async function buildYear(loc, year, opts, onProgress){
     const e = sunEvents(dt.getUTCFullYear(), dt.getUTCMonth()+1, dt.getUTCDate(), loc.lat, loc.lon, loc.tz);
     const mid = midnightOf(i);
     const toAbs = x => x ? i*1440 + (x.getTime()-mid)/60000 + tzOffset(x,loc.tz) - tzOffset(new Date(mid),loc.tz) : null;
-    sun.push({day:i, dow:dt.getUTCDay(), rise:toAbs(e.rise), set:toAbs(e.set), polar:e.polar});
+    sun.push({day:i, dow:dt.getUTCDay(), rise:toAbs(e.rise), set:toAbs(e.set)});
   }
 
-  // principal moon phases across the year
   const phases = principalPhases(midnightOf(0), midnightOf(nDays)).map(p=>{
-    const off = tzOffset(p.time, loc.tz);
-    const local = p.time.getTime() + off*60000;
-    const dayIdx = Math.floor((local - (midnightOf(0) + tzOffset(new Date(midnightOf(0)),loc.tz)*60000))/86400000);
+    const local = p.time.getTime() + tzOffset(p.time, loc.tz)*60000;
+    const base = midnightOf(0) + tzOffset(new Date(midnightOf(0)), loc.tz)*60000;
+    const dayIdx = Math.floor((local - base)/86400000);
     const dt = new Date(local);
-    return {name:p.name, target:p.target, min: dayIdx*1440 + dt.getUTCHours()*60 + dt.getUTCMinutes()};
+    return {target:p.target, min: dayIdx*1440 + dt.getUTCHours()*60 + dt.getUTCMinutes()};
   });
 
-  // slice per month
   for(const M of months){
     M.extremes = extremes.filter(p => p.t >= M.startMin && p.t < M.endMin);
     M.sun      = sun.filter(s => s.day*1440 >= M.startMin && s.day*1440 < M.endMin);
@@ -761,21 +768,13 @@ async function buildYear(loc, year, opts, onProgress){
 
   const inYear = extremes.filter(p => p.t >= 0 && p.t < nDays*1440);
   const highs = inYear.filter(p=>p.type==="H"), lows = inYear.filter(p=>p.type==="L");
-  const hi = highs.reduce((a,b)=>b.h>a.h?b:a, highs[0]);
-  const lo = lows.reduce((a,b)=>b.h<a.h?b:a, lows[0]);
 
   return {
-    loc, year, nDays, months, atMin, extremes, source, datum, precision, harmonics,
-    unitLabel: opts.units === "english" ? "ft" : "m", units: opts.units,
-    yMin: lo.h, yMax: hi.h,
-    stats:{
-      highest:hi, lowest:lo, count:inYear.length,
-      meanRange: months.reduce((a,M)=>{
-        const hs = M.extremes.filter(p=>p.type==="H"), ls = M.extremes.filter(p=>p.type==="L");
-        if(!hs.length || !ls.length) return a;
-        return a + (hs.reduce((s,p)=>s+p.h,0)/hs.length - ls.reduce((s,p)=>s+p.h,0)/ls.length);
-      },0)/12
-    }
+    loc, year, nDays, months, atMin, source, datum, harmonics,
+    unitLabel: opts.units === "english" ? "feet" : "metres", units: opts.units,
+    yMin: lows.reduce((a,b)=>b.h<a.h?b:a, lows[0]).h,
+    yMax: highs.reduce((a,b)=>b.h>a.h?b:a, highs[0]).h,
+    count: inYear.length
   };
 }
 
@@ -786,46 +785,131 @@ function yearMinutes(s, year){
   return day*1440 + p.hh*60 + p.mm;
 }
 
-/* ------------------------------------------------------------------ palettes
-   Every piece of extra information is a coloured dot; nothing is an icon. */
+/* --------------------------------------------------------------- palettes
+   Three flat inks and nothing else: a ground, a line colour, one accent. */
 const THEMES = {
-  navy:{
-    bg:"#123a56", wave:"#f2ede1", ink:"#f2ede1", soft:"#a8c0ce", faint:"#6f92a8",
-    dots:{ high:"#f2b544", low:"#5fc4d0", sunrise:"#ff8a5b", sunset:"#e0607e",
-           newMoon:"#8c9dbc", firstQuarter:"#8fd8a8", fullMoon:"#ffffff", lastQuarter:"#bfa2e8" }
-  },
-  paper:{
-    bg:"#eef1ea", wave:"#1b4a58", ink:"#12262e", soft:"#4a6a72", faint:"#8ba5a6",
-    dots:{ high:"#c07a12", low:"#1f7f92", sunrise:"#d1521f", sunset:"#a83355",
-           newMoon:"#5a6a88", firstQuarter:"#2e8b5f", fullMoon:"#8a6a1f", lastQuarter:"#6b4ba8" }
-  },
-  ink:{
-    bg:"#ffffff", wave:"#000000", ink:"#000000", soft:"#555555", faint:"#8a8a8a",
-    dots:{ high:"#000000", low:"#000000", sunrise:"#000000", sunset:"#000000",
-           newMoon:"#000000", firstQuarter:"#000000", fullMoon:"#000000", lastQuarter:"#000000" }
-  }
+  chart:  {ground:"#123a56", ink:"#f2ede1", accent:"#e0a93f"},
+  bone:   {ground:"#efe7d6", ink:"#14384f", accent:"#bd7327"},
+  sepia:  {ground:"#f0e4cc", ink:"#4a3524", accent:"#a6432f"},
+  slate:  {ground:"#22262b", ink:"#ecebe6", accent:"#c9a227"}
 };
+
+/* ------------------------------------------------------------------- icons
+   No outlines, no frames: every mark is a solid shape in one of the three inks. */
+function icon(kind, x, y, T){
+  const A = T.accent, I = T.ink;
+  switch(kind){
+    // sun at the horizon: a dome above the line at dawn, below it at dusk
+    case "sunrise":
+      return `<path d="M${x-0.78} ${y+0.16}a0.78 0.78 0 0 1 1.56 0z" fill="${A}"/>`
+           + `<rect x="${x-0.9}" y="${y+0.42}" width="1.8" height="0.26" fill="${A}"/>`;
+    case "sunset":
+      return `<path d="M${x-0.78} ${y-0.16}a0.78 0.78 0 0 0 1.56 0z" fill="${A}"/>`
+           + `<rect x="${x-0.9}" y="${y-0.68}" width="1.8" height="0.26" fill="${A}"/>`;
+    // whole discs for the syzygies
+    case "fullMoon":  return `<circle cx="${x}" cy="${y}" r="1" fill="${I}"/>`;
+    case "newMoon":   return `<circle cx="${x}" cy="${y}" r="1" fill="${A}"/>`;
+    // the quarters are the moon's lit half, kept very small
+    case "firstQuarter": return `<path d="M${x} ${y-0.55}a0.55 0.55 0 0 1 0 1.1z" fill="${I}"/>`;
+    case "lastQuarter":  return `<path d="M${x} ${y-0.55}a0.55 0.55 0 0 0 0 1.1z" fill="${I}"/>`;
+  }
+  return "";
+}
 
 const KEY_ITEMS = [
-  {id:"high",         label:"High water",    note:"time above, height below"},
-  {id:"low",          label:"Low water",     note:"height above, time below"},
-  {id:"sunrise",      label:"Sunrise",       note:"on the curve"},
-  {id:"sunset",       label:"Sunset",        note:"on the curve"},
-  {id:"newMoon",      label:"New moon",      note:"spring tides follow"},
-  {id:"firstQuarter", label:"First quarter", note:"neap tides follow"},
-  {id:"fullMoon",     label:"Full moon",     note:"spring tides follow"},
-  {id:"lastQuarter",  label:"Last quarter",  note:"neap tides follow"}
+  {id:"sunrise",      label:"Sunrise"},
+  {id:"sunset",       label:"Sunset"},
+  {id:"newMoon",      label:"New moon"},
+  {id:"firstQuarter", label:"First quarter"},
+  {id:"fullMoon",     label:"Full moon"},
+  {id:"lastQuarter",  label:"Last quarter"}
 ];
 
-/* ------------------------------------------------------------- A1 poster
+/* ---------------------------------------------------------- decorative border
+   Each style draws one horizontal run; the run is then placed on all four
+   edges by rotation, and a corner block masks where two runs meet. */
+const BORDERS = {
+  none:"None", graduated:"Graduated", cable:"Cable", scallop:"Scallop",
+  dentil:"Dentil", fleuron:"Fleuron"
+};
+
+function borderRun(style, T, L, t){
+  const I = T.ink, A = T.accent, G = T.ground;
+  const rules = `<rect x="0" y="0" width="${L}" height="0.3" fill="${I}"/>`
+              + `<rect x="0" y="${t-0.3}" width="${L}" height="0.3" fill="${I}"/>`;
+  let s = "";
+  if(style === "graduated"){
+    const n = Math.max(2, Math.round(L/7)), u = L/n;
+    for(let i=0;i<n;i+=2) s += `<rect x="${(i*u).toFixed(2)}" y="1" width="${u.toFixed(2)}" height="${t-2}" fill="${I}"/>`;
+    return rules + s;
+  }
+  if(style === "cable"){
+    const n = Math.max(2, Math.round(L/2.6)), u = L/n;
+    for(let i=0;i<n;i++){
+      const o = i*u;
+      s += `<path d="M${(o).toFixed(2)} ${t-0.8}L${(o+u*0.62).toFixed(2)} 0.8L${(o+u*0.98).toFixed(2)} 0.8L${(o+u*0.36).toFixed(2)} ${t-0.8}Z" fill="${I}"/>`;
+    }
+    return rules + s;
+  }
+  if(style === "scallop"){
+    const n = Math.max(2, Math.round(L/3.4)), u = L/n, r = u/2, cy = t/2;
+    let d = `M0 ${cy}`;
+    for(let i=0;i<n;i++) d += `a${r.toFixed(2)} ${(t*0.32).toFixed(2)} 0 0 ${i%2?0:1} ${u.toFixed(2)} 0`;
+    return rules + `<path d="${d}" fill="none" stroke="${I}" stroke-width="0.45"/>`;
+  }
+  if(style === "dentil"){
+    const n = Math.max(2, Math.round(L/2.4)), u = L/n;
+    for(let i=0;i<n;i++)
+      s += `<rect x="${(i*u+u*0.22).toFixed(2)}" y="${t*0.28}" width="${(u*0.56).toFixed(2)}" height="${(t*0.44).toFixed(2)}" fill="${i%5===2?A:I}"/>`;
+    return rules + s;
+  }
+  if(style === "fleuron"){
+    return `<rect x="0" y="0.5" width="${L}" height="0.45" fill="${I}"/>`
+         + `<rect x="0" y="${t-1.1}" width="${L}" height="0.2" fill="${I}"/>`;
+  }
+  return "";
+}
+
+function borderCorner(style, T, cx, cy, t){
+  const I = T.ink, A = T.accent, G = T.ground;
+  if(style === "fleuron"){
+    // a small rosette: four petals about a centre
+    let s = `<circle cx="${cx}" cy="${cy}" r="${t*0.34}" fill="${I}"/>`;
+    for(let k=0;k<4;k++){
+      const a = k*Math.PI/2 + Math.PI/4;
+      s += `<circle cx="${(cx+Math.cos(a)*t*0.36).toFixed(2)}" cy="${(cy+Math.sin(a)*t*0.36).toFixed(2)}" r="${t*0.2}" fill="${I}"/>`;
+    }
+    return s + `<circle cx="${cx}" cy="${cy}" r="${t*0.15}" fill="${A}"/>`;
+  }
+  if(style === "scallop"){
+    return `<circle cx="${cx}" cy="${cy}" r="${t*0.42}" fill="${I}"/>`
+         + `<circle cx="${cx}" cy="${cy}" r="${t*0.17}" fill="${A}"/>`;
+  }
+  const h = t/2;
+  return `<rect x="${cx-h}" y="${cy-h}" width="${t}" height="${t}" fill="${I}"/>`
+       + `<path d="M${cx} ${cy-t*0.26}L${cx+t*0.26} ${cy}L${cx} ${cy+t*0.26}L${cx-t*0.26} ${cy}Z" fill="${A}"/>`;
+}
+
+function borderFrame(style, T, x, y, w, h, t){
+  if(style === "none" || !BORDERS[style]) return "";
+  const run = (len, angle, tx, ty) =>
+    `<g transform="translate(${tx} ${ty}) rotate(${angle})">${borderRun(style,T,len,t)}</g>`;
+  return run(w, 0, x, y) + run(h, 90, x+w, y) + run(w, 180, x+w, y+h) + run(h, 270, x, y+h)
+       + borderCorner(style,T,x+t/2,y+t/2,t) + borderCorner(style,T,x+w-t/2,y+t/2,t)
+       + borderCorner(style,T,x+w-t/2,y+h-t/2,t) + borderCorner(style,T,x+t/2,y+h-t/2,t);
+}
+
+/* --------------------------------------------------------------- A1 poster
    All units are millimetres so the sheet prints at true A1. */
 const PAGE = {
-  W:594, H:841, M:16,
-  top:70, footer:34,
-  monthLabel:8, timeRow:3.6, heightRow:3.6, wave:31, dateRow:4.2, gap:3.4,
-  fsSmall:2.3, fsDate:2.2, fsMonth:6.4
+  W:594, H:841, M:22,
+  borderInset:8, borderThick:5,
+  titleTop:34, bandsTop:112, keyBase:816,
+  monthRow:9, hiZone:7, waveH:27, loZone:7, dateRow:4.6,
+  fsFig:2.2, fsDate:2.5, fsMonth:6.2,
+  sep:1.6, lineGap:2.9
 };
-const DISPLAY = 'Cinzel, "Trajan Pro", Georgia, serif';
+const DISPLAY = '"IM Fell English", "IM FELL English", Georgia, "Times New Roman", serif';
 const FIGURE  = 'Jost, "Century Gothic", "Avenir Next", sans-serif';
 const CHW = 0.58;                              // digit advance, in ems, for Jost
 
@@ -836,7 +920,7 @@ const CHW = 0.58;                              // digit advance, in ems, for Jos
 function spread(centres, pitch, lo, hi){
   const n = centres.length;
   if(!n) return [];
-  if((n-1)*pitch > hi - lo){                       // cannot fit: lay out evenly
+  if((n-1)*pitch > hi - lo){
     const step = (hi - lo)/(n-1 || 1);
     return centres.map((_,i)=>lo + i*step);
   }
@@ -858,52 +942,43 @@ function spread(centres, pitch, lo, hi){
 }
 
 function renderYear(Y, opts){
-  const T = THEMES[opts.theme] || THEMES.navy;
+  const T = THEMES[opts.theme] || THEMES.chart;
   const P = PAGE;
   const cw = P.W - 2*P.M;
-  const band = (P.H - P.top - P.footer)/12;
   const s = [];
   const p = (...x)=>s.push(...x);
   const n1 = v => Math.round(v*10)/10;
+  const mid = P.W/2;
 
-  const txt = (x,y,t) => `<text x="${n1(x)}" y="${n1(y)}">${esc(t)}</text>`;
-  const group = (attrs, body) => body.length ? `<g ${attrs}>${body.join("")}</g>` : "";
+  p(`<rect width="${P.W}" height="${P.H}" fill="${T.ground}"/>`);
+  p(borderFrame(opts.border || "graduated", T, P.borderInset, P.borderInset,
+                P.W - 2*P.borderInset, P.H - 2*P.borderInset, P.borderThick));
 
-  p(`<rect width="${P.W}" height="${P.H}" fill="${T.bg}"/>`);
+  /* ------------------------------------------------------------ title block */
+  const region = Y.loc.admin || "";
+  const coords = `${Math.abs(Y.loc.lat).toFixed(4)}°${Y.loc.lat>=0?"N":"S"}   ${Math.abs(Y.loc.lon).toFixed(4)}°${Y.loc.lon>=0?"E":"W"}`;
+  p(`<text x="${mid}" y="${P.titleTop+18}" text-anchor="middle" font-family='${DISPLAY}' font-size="21" fill="${T.ink}" letter-spacing="1.6">${esc(Y.loc.name)}</text>`);
+  if(region) p(`<text x="${mid}" y="${P.titleTop+27}" text-anchor="middle" font-family='${DISPLAY}' font-size="5" fill="${T.accent}" letter-spacing="2.2">${esc(region.toUpperCase())}</text>`);
+  p(`<text x="${mid}" y="${P.titleTop+48}" text-anchor="middle" font-family='${DISPLAY}' font-size="15" fill="${T.accent}" letter-spacing="7">${Y.year}</text>`);
+  p(`<text x="${mid}" y="${P.titleTop+57}" text-anchor="middle" font-family='${FIGURE}' font-size="3.4" fill="${T.ink}" letter-spacing="1.4">${esc(coords)}</text>`);
+  // a small ruled ornament closing the title
+  const oy = P.titleTop + 66;
+  p(`<rect x="${mid-46}" y="${oy}" width="38" height="0.25" fill="${T.ink}"/>`);
+  p(`<rect x="${mid+8}" y="${oy}" width="38" height="0.25" fill="${T.ink}"/>`);
+  p(`<path d="M${mid} ${oy-2}L${mid+2.4} ${oy+0.12}L${mid} ${oy+2.24}L${mid-2.4} ${oy+0.12}Z" fill="${T.accent}"/>`);
 
-  /* masthead */
-  const place = `${Y.loc.name}${Y.loc.admin ? ", " + Y.loc.admin : ""}`;
-  p(`<text x="${P.M}" y="34" font-family='${DISPLAY}' font-size="13" fill="${T.ink}" letter-spacing="0.6">${esc(place.toUpperCase())}</text>`);
-  p(`<text x="${P.M}" y="50" font-family='${DISPLAY}' font-size="9" fill="${T.soft}" letter-spacing="2.4">${Y.year}</text>`);
-  const meta = [
-    Y.loc.station ? `NOAA ${Y.loc.station.id}` : "Open-Meteo model",
-    `${Y.datum} · ${Y.units === "english" ? "feet" : "metres"}`,
-    `${tzAbbr(Y.loc.tz, new Date())} · ${Y.loc.tz}`,
-    `${Math.abs(Y.loc.lat).toFixed(3)}°${Y.loc.lat>=0?"N":"S"}  ${Math.abs(Y.loc.lon).toFixed(3)}°${Y.loc.lon>=0?"E":"W"}`
-  ];
-  meta.forEach((m,i)=>p(`<text x="${P.W-P.M}" y="${24+i*7}" text-anchor="end" font-family='${FIGURE}' font-size="2.9" fill="${T.faint}">${esc(m)}</text>`));
-  p(`<line x1="${P.M}" y1="60" x2="${P.W-P.M}" y2="60" stroke="${T.soft}" stroke-width="0.3"/>`);
-
-  /* twelve bands */
+  /* ------------------------------------------------------------ twelve bands */
+  const band = (P.keyBase - 14 - P.bandsTop)/12;
   const span = Y.yMax - Y.yMin || 1;
-  const padY = span*0.06;
 
   Y.months.forEach((M,mi)=>{
-    const y0 = P.top + mi*band;
-    const waveTop = y0 + P.monthLabel + P.timeRow + P.heightRow;
-    const waveBot = waveTop + P.wave;
-    const perDay = cw/M.days;
+    const y0 = P.bandsTop + mi*band;
+    const waveTop = y0 + P.monthRow + P.hiZone;
+    const waveBot = waveTop + P.waveH;
     const xOf = t => P.M + ((t - M.startMin)/(M.days*1440))*cw;
-    const yOf = h => waveBot - ((h - (Y.yMin-padY))/(span + 2*padY))*P.wave;
+    const yOf = h => waveBot - ((h - Y.yMin)/span)*P.waveH;
 
-    /* month name, and the month's own extremes */
-    p(`<text x="${P.M}" y="${n1(y0+P.monthLabel-1.6)}" font-family='${DISPLAY}' font-size="${P.fsMonth}" fill="${T.ink}" letter-spacing="1.6">${MONTHS[M.month-1].toUpperCase()}</text>`);
-    const mh = M.extremes.filter(e=>e.type==="H"), ml = M.extremes.filter(e=>e.type==="L");
-    if(mh.length && ml.length){
-      const top = mh.reduce((a,b)=>b.h>a.h?b:a), bot = ml.reduce((a,b)=>b.h<a.h?b:a);
-      p(`<text x="${P.W-P.M}" y="${n1(y0+P.monthLabel-2.2)}" text-anchor="end" font-family='${FIGURE}' font-size="2.6" fill="${T.faint}">`
-        + `${esc(`${M.extremes.length} tides   highest ${fmtH(top.h,Y.units)}   lowest ${fmtH(bot.h,Y.units)} ${Y.unitLabel}`)}</text>`);
-    }
+    p(`<text x="${mid}" y="${n1(y0+P.monthRow-2.4)}" text-anchor="middle" font-family='${DISPLAY}' font-size="${P.fsMonth}" fill="${T.ink}" letter-spacing="3.4">${MONTHS[M.month-1].toUpperCase()}</text>`);
 
     /* the wave: a 30-minute grid merged with the exact turning points so every
        crest and trough is drawn sharp */
@@ -916,92 +991,74 @@ function renderYear(Y, opts){
       if(i && ts[i]-ts[i-1] < 0.5) continue;
       d += (d?"L":"M") + n1(xOf(ts[i])) + " " + Math.round(yOf(Y.atMin(ts[i]))*10)/10;
     }
-    p(`<path d="${d}" fill="none" stroke="${T.wave}" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round"/>`);
+    p(`<path d="${d}" fill="none" stroke="${T.ink}" stroke-width="0.5" stroke-linejoin="round" stroke-linecap="round"/>`);
 
-    /* tide labels: time outermost, height nearest the wave, as in the reference */
-    const rows = [
-      {list:mh, yTime:y0+P.monthLabel+P.timeRow-0.9, yHeight:y0+P.monthLabel+P.timeRow+P.heightRow-0.9, colour:T.dots.high},
-      {list:ml, yHeight:waveBot+P.heightRow-1.1,     yTime:waveBot+P.heightRow+P.timeRow-1.1,           colour:T.dots.low}
-    ];
-    const timeTexts = [], heightTexts = [], dots = {};
-    for(const r of rows){
-      const wTime = 5*CHW*P.fsSmall + 0.9;
-      const raw = r.list.map(e=>xOf(e.t));
-      const adj = spread(raw, wTime, wTime/2 + 2, P.W - wTime/2 - 2);
-      r.list.forEach((e,i)=>{
-        timeTexts.push({x:adj[i], y:r.yTime, t:fmtTime(e.t - Math.floor(e.t/1440)*1440, opts.clock)});
-        heightTexts.push({x:adj[i], y:r.yHeight, t:fmtH(e.h, Y.units)});
-        (dots[r.colour] ||= []).push([xOf(e.t), yOf(e.h)]);
-        // hairline leader when a label had to move off its own crest
-        if(Math.abs(adj[i]-raw[i]) > 1.5){
-          p(`<line x1="${n1(raw[i])}" y1="${n1(yOf(e.h))}" x2="${n1(adj[i])}" y2="${n1(r.yHeight + (r.colour===T.dots.high ? 0.6 : -2.4))}" stroke="${T.faint}" stroke-width="0.12"/>`);
-        }
+    /* tide labels, held a fixed distance off their own crest or trough, so the
+       reading band rises and falls with the spring-neap rhythm */
+    const pitch = 5*CHW*P.fsFig + 0.95;
+    const times = [], heights = [], leaders = [];
+    for(const kind of ["H","L"]){
+      const list = M.extremes.filter(e=>e.type===kind);
+      const raw = list.map(e=>xOf(e.t));
+      const adj = spread(raw, pitch, pitch/2 + 2, P.W - pitch/2 - 2);
+      list.forEach((e,i)=>{
+        const py = yOf(e.h);
+        const hy = kind === "H" ? py - P.sep : py + P.sep + 1.6;
+        const ty = kind === "H" ? hy - P.lineGap : hy + P.lineGap;
+        times.push([adj[i], ty, fmtTime(e.t - Math.floor(e.t/1440)*1440, opts.clock)]);
+        heights.push([adj[i], hy, fmtH(e.h)]);
+        if(Math.abs(adj[i]-raw[i]) > 1.5)
+          leaders.push(`<path d="M${n1(raw[i])} ${n1(py)}L${n1(adj[i])} ${n1(kind==="H" ? hy+0.5 : hy-1.9)}" stroke="${T.ink}" stroke-width="0.12" fill="none"/>`);
       });
     }
-    p(group(`font-family='${FIGURE}' font-size="${P.fsSmall}" fill="${T.ink}" text-anchor="middle"`,
-            timeTexts.map(o=>txt(o.x,o.y,o.t))));
-    p(group(`font-family='${FIGURE}' font-size="${P.fsSmall}" fill="${T.soft}" text-anchor="middle"`,
-            heightTexts.map(o=>txt(o.x,o.y,o.t))));
+    p(...leaders);
+    p(`<g font-family='${FIGURE}' font-size="${P.fsFig}" fill="${T.ink}" text-anchor="middle">`
+      + times.map(([x,y,t])=>`<text x="${n1(x)}" y="${n1(y)}">${t}</text>`).join("") + `</g>`);
+    p(`<g font-family='${FIGURE}' font-size="${P.fsFig}" fill="${T.accent}" text-anchor="middle">`
+      + heights.map(([x,y,t])=>`<text x="${n1(x)}" y="${n1(y)}">${t}</text>`).join("") + `</g>`);
 
-    /* sun and moon, riding the curve */
+    /* sun and moon ride the curve */
+    let marks = "";
     for(const sd of M.sun){
-      if(sd.rise != null) (dots[T.dots.sunrise] ||= []).push([xOf(sd.rise), yOf(Y.atMin(sd.rise))]);
-      if(sd.set  != null) (dots[T.dots.sunset]  ||= []).push([xOf(sd.set),  yOf(Y.atMin(sd.set))]);
+      if(sd.rise != null) marks += icon("sunrise", n1(xOf(sd.rise)), n1(yOf(Y.atMin(sd.rise))), T);
+      if(sd.set  != null) marks += icon("sunset",  n1(xOf(sd.set)),  n1(yOf(Y.atMin(sd.set))),  T);
     }
     const phaseKey = {0:"newMoon", 90:"firstQuarter", 180:"fullMoon", 270:"lastQuarter"};
-    const moonDots = [];
-    for(const ph of M.phases){
-      moonDots.push({c:T.dots[phaseKey[ph.target]], x:xOf(ph.min), y:yOf(Y.atMin(ph.min))});
-    }
+    for(const ph of M.phases)
+      marks += icon(phaseKey[ph.target], n1(xOf(ph.min)), n1(yOf(Y.atMin(ph.min))), T);
+    p(marks);
 
-    for(const [colour, list] of Object.entries(dots)){
-      const r = (colour===T.dots.sunrise || colour===T.dots.sunset) ? 0.42 : 0.55;
-      p(`<g fill="${colour}">` + list.map(([x,y])=>`<circle cx="${n1(x)}" cy="${n1(y)}" r="${r}"/>`).join("") + `</g>`);
-    }
-    for(const m of moonDots){
-      p(`<circle cx="${n1(m.x)}" cy="${n1(m.y)}" r="1.15" fill="${m.c}" stroke="${T.bg}" stroke-width="0.3"/>`);
-    }
-
-    /* date row */
-    const dateY = waveBot + P.heightRow + P.timeRow + P.dateRow - 1.2;
-    const dates = M.sun.map((sd,i)=>{
-      const cx = P.M + (i + 0.5)*perDay;
-      return txt(cx, dateY, `${DOW3[sd.dow].toUpperCase()} ${i+1}`);
-    });
-    p(group(`font-family='${DISPLAY}' font-size="${P.fsDate}" fill="${T.faint}" text-anchor="middle" letter-spacing="0.3"`, dates));
+    /* dates */
+    const dateY = waveBot + P.loZone + P.dateRow - 1.6;
+    p(`<g font-family='${DISPLAY}' font-size="${P.fsDate}" fill="${T.accent}" text-anchor="middle" letter-spacing="0.4">`
+      + M.sun.map((sd,i)=>`<text x="${n1(P.M + (i+0.5)*(cw/M.days))}" y="${n1(dateY)}">${DOW3[sd.dow].toUpperCase()} ${i+1}</text>`).join("")
+      + `</g>`);
   });
 
-  /* footer */
-  const fy = P.H - P.footer + 12;
-  const st = Y.stats, HF = Y.harmonics;
-  const credit = Y.loc.station
-    ? `Tide predictions: NOAA CO-OPS station ${Y.loc.station.id} ${Y.loc.station.name}, ${Y.loc.station.km.toFixed(0)} km from the search point. Harmonic prediction; weather is not included.`
-    : `Tide predicted from ${HF ? HF.parts.length : 0} harmonic constituents fitted to ${HF ? HF.days : 0} days of the Open-Meteo 8 km ocean model`
-      + `${HF ? `, M2 amplitude ${HF.M2.toFixed(2)} m, residual ${HF.rms.toFixed(2)} m` : ""}. Modelled, not measured.`;
-  p(`<line x1="${P.M}" y1="${P.H-P.footer+2}" x2="${P.W-P.M}" y2="${P.H-P.footer+2}" stroke="${T.soft}" stroke-width="0.3"/>`);
-  p(`<text x="${P.M}" y="${fy}" font-family='${FIGURE}' font-size="2.9" fill="${T.soft}">`
-    + esc(`${st.count} tides · highest ${fmtH(st.highest.h,Y.units)} ${Y.unitLabel} · lowest ${fmtH(st.lowest.h,Y.units)} ${Y.unitLabel} · mean range ${fmtH(st.meanRange,Y.units)} ${Y.unitLabel}`)
-    + `</text>`);
-  p(`<text x="${P.M}" y="${fy+6}" font-family='${FIGURE}' font-size="2.5" fill="${T.faint}">${esc(credit)}</text>`);
-  p(`<text x="${P.M}" y="${fy+11}" font-family='${FIGURE}' font-size="2.5" fill="${T.faint}">Sun and moon computed locally. Not for navigation.</text>`);
-  p(`<text x="${P.W-P.M}" y="${fy+11}" text-anchor="end" font-family='${FIGURE}' font-size="2.5" fill="${T.faint}">${esc("generated "+new Date().toISOString().slice(0,10))}</text>`);
+  /* ------------------------------------------------------------------- key
+     Icon centred over its label in equal slots, so nothing depends on knowing
+     the width of a glyph. */
+  const keyW = cw*0.80, slot = keyW/KEY_ITEMS.length, kx0 = mid - keyW/2, ky = P.keyBase;
+  KEY_ITEMS.forEach((it,i)=>{
+    const cx = kx0 + (i + 0.5)*slot;
+    p(icon(it.id, n1(cx), ky - 5, T));
+    p(`<text x="${n1(cx)}" y="${ky}" text-anchor="middle" font-family='${DISPLAY}' font-size="3.3" fill="${T.ink}" letter-spacing="0.5">${esc(it.label)}</text>`);
+  });
+  p(`<text x="${mid}" y="${ky+6.6}" text-anchor="middle" font-family='${FIGURE}' font-size="2.6" fill="${T.accent}" letter-spacing="1.1">${esc(`${Y.unitLabel} · ${tzAbbr(Y.loc.tz, new Date())} · ${Y.datum}`)}</text>`);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${P.W}mm" height="${P.H}mm" `
-       + `viewBox="0 0 ${P.W} ${P.H}" role="img" aria-label="${esc(place)} tide chart for ${Y.year}">`
+       + `viewBox="0 0 ${P.W} ${P.H}" role="img" aria-label="${esc(Y.loc.name)} tide chart for ${Y.year}">`
        + `__FONTS__` + s.join("") + `</svg>`;
 }
 
-/* --------------------------------------------------- legend key templates
-   One small SVG per item, no background, sized to its own content so it can be
-   dropped straight onto the sheet and positioned by hand. */
+/* --------------------------------------------------- standalone key templates */
 function keySVG(item, theme){
-  const T = THEMES[theme] || THEMES.navy;
-  const W = 62, H = 9;
+  const T = THEMES[theme] || THEMES.chart;
+  const W = 46, H = 7;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" `
     + `role="img" aria-label="${esc(item.label)} key">__FONTS__`
-    + `<circle cx="3" cy="4" r="1.6" fill="${T.dots[item.id]}"${item.id==="fullMoon"?` stroke="${T.soft}" stroke-width="0.2"`:""}/>`
-    + `<text x="7.4" y="3.6" font-family='${DISPLAY}' font-size="2.9" fill="${T.ink}" letter-spacing="0.5">${esc(item.label.toUpperCase())}</text>`
-    + `<text x="7.4" y="7.2" font-family='${FIGURE}' font-size="2.2" fill="${T.faint}">${esc(item.note)}</text>`
+    + icon(item.id, 3, 3.4, T)
+    + `<text x="7" y="4.5" font-family='${DISPLAY}' font-size="3.3" fill="${T.ink}" letter-spacing="0.5">${esc(item.label)}</text>`
     + `</svg>`;
 }
 
@@ -1010,7 +1067,7 @@ let fontCSSPromise = null;
 async function embeddedFontCSS(){
   if(fontCSSPromise) return fontCSSPromise;
   fontCSSPromise = (async ()=>{
-    const url = "https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Jost:wght@300;400;500&display=swap";
+    const url = "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Jost:wght@300;400;500&display=swap";
     const css = await (await fetch(url)).text();
     const blocks = css.split("@font-face").slice(1)
       .filter(b => /unicode-range:[^;]*U\+0000-00FF/i.test(b) || !/unicode-range/i.test(b));
@@ -1192,7 +1249,7 @@ async function pickPlace(place){
 
 async function render(){
   if(!state.loc) return;
-  const opts = {units:el("units").value, clock:el("clock").value, theme:el("theme").value};
+  const opts = {units:el("units").value, clock:el("clock").value, theme:el("theme").value, border:el("border").value};
   el("dlSvg").disabled = el("dlPng").disabled = true;
   setWarn("");
   try{
@@ -1204,7 +1261,7 @@ async function render(){
     state.svg = svg;
     el("stage").innerHTML = svg.replace("__FONTS__","");
     el("dlSvg").disabled = el("dlPng").disabled = false;
-    setStatus(`${Y.stats.count} tides across ${Y.nDays} days · ${Y.source} · ${Y.loc.tz}`);
+    setStatus(`${Y.count} tides across ${Y.nDays} days · ${Y.source} · ${Y.loc.tz}`);
     if(!Y.loc.station){
       const H = Y.harmonics;
       setWarn(`No NOAA station within 200 km, so this is a harmonic prediction: ${H.parts.length} tidal constituents fitted to ${H.days} days of the Open-Meteo 8 km ocean model. `
@@ -1223,7 +1280,7 @@ function writeHash(){
   if(!state.loc) return;
   const p = new URLSearchParams({
     q:state.loc.name, lat:state.loc.lat.toFixed(4), lon:state.loc.lon.toFixed(4),
-    tz:state.loc.tz, y:String(state.year), u:el("units").value, t:el("theme").value
+    tz:state.loc.tz, y:String(state.year), u:el("units").value, t:el("theme").value, b:el("border").value
   });
   if(state.loc.admin) p.set("a", state.loc.admin);
   if(state.loc.station) p.set("s", state.loc.station.id);
@@ -1236,7 +1293,8 @@ async function readHash(){
   const p = new URLSearchParams(h);
   if(!p.get("lat") || !p.get("lon")) return false;
   el("units").value = p.get("u") || "metric";
-  el("theme").value = p.get("t") || "navy";
+  el("theme").value = p.get("t") || "chart";
+  el("border").value = p.get("b") || "graduated";
   state.year = +(p.get("y") || state.year);
   el("year").value = state.year;
   el("q").value = p.get("q") || "";
@@ -1262,6 +1320,7 @@ el("prevYear").onclick = () => { state.year--; el("year").value = state.year; re
 el("nextYear").onclick = () => { state.year++; el("year").value = state.year; render(); };
 ["units","clock"].forEach(id => el(id).onchange = render);
 el("theme").onchange = () => { drawKeys(); render(); };
+el("border").onchange = render;
 
 el("dlSvg").onclick = async () => {
   const b = el("dlSvg"); b.disabled = true;
