@@ -3,237 +3,115 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tide Almanac — monthly tide charts for any coast</title>
-<meta name="description" content="Look up a coastal location and generate a printable monthly tide chart with peaks, troughs, sunrise, sunset and moon phases. Exports as SVG.">
+<title>Tide Almanac — a year of tides on one A1 sheet</title>
+<meta name="description" content="Look up a coastal location and generate an A1 tide poster: twelve continuous monthly waves carrying every high and low, sunrise, sunset and moon phase. Exports as SVG.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,600;1,6..96,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#e9eeea;
-    --paper-2:#dde5e0;
-    --paper-3:#cfdad4;
-    --ink:#12262e;
-    --ink-soft:#4a6a72;
-    --ink-faint:#83a0a3;
-    --water:#2e6e7e;
-    --water-deep:#1b4a58;
-    --water-pale:#b6d3d7;
-    --sun:#c8802c;
-    --rule:#b3c5bf;
-    --focus:#1b4a58;
-    --shadow:0 1px 0 rgba(18,38,46,.06);
+    --bg:#0f3049;
+    --panel:#16405d;
+    --panel-2:#1b4b6d;
+    --ink:#f2ede1;
+    --soft:#a8c0ce;
+    --faint:#6f92a8;
+    --rule:#2c5f80;
+    --accent:#f2b544;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
-    background:var(--paper);
+    background:var(--bg);
     color:var(--ink);
-    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-family:Jost,system-ui,-apple-system,"Segoe UI",sans-serif;
     font-size:15px;
-    line-height:1.5;
+    font-weight:300;
+    line-height:1.55;
     -webkit-font-smoothing:antialiased;
   }
-  a{color:var(--water-deep)}
-  .wrap{max-width:1376px;margin:0 auto;padding:0 24px 96px}
+  a{color:var(--accent)}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 24px 96px}
 
-  /* ---------- masthead ---------- */
   header.mast{
-    padding:44px 0 20px;
+    padding:48px 0 22px;
     border-bottom:1px solid var(--rule);
-    display:flex;
-    align-items:flex-end;
-    justify-content:space-between;
-    gap:32px;
-    flex-wrap:wrap;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;
   }
   .mast h1{
-    font-family:"Bodoni Moda",Didot,"Times New Roman",serif;
+    font-family:Cinzel,Georgia,serif;
     font-weight:400;
-    font-size:clamp(38px,6vw,64px);
-    line-height:.95;
+    font-size:clamp(30px,5vw,50px);
+    letter-spacing:.06em;
+    line-height:1;
     margin:0;
-    letter-spacing:-.01em;
   }
-  .mast p{
-    margin:10px 0 0;
-    max-width:52ch;
-    color:var(--ink-soft);
-  }
-  .mast .colophon{
-    font-family:"IBM Plex Mono",monospace;
-    font-size:11.5px;
-    color:var(--ink-faint);
-    text-align:right;
-    line-height:1.8;
-  }
+  .mast p{margin:12px 0 0;max-width:54ch;color:var(--soft)}
+  .mast .colophon{font-size:12px;color:var(--faint);text-align:right;line-height:1.9}
 
-  /* ---------- controls ---------- */
-  .controls{
-    display:grid;
-    grid-template-columns:minmax(280px,1.35fr) minmax(240px,1fr);
-    gap:0;
-    border-bottom:1px solid var(--rule);
-  }
+  .controls{display:grid;grid-template-columns:minmax(280px,1.4fr) minmax(200px,.8fr);border-bottom:1px solid var(--rule)}
   .field{padding:22px 28px 22px 0}
   .field + .field{padding-left:28px;border-left:1px solid var(--rule)}
-  .field h2{
-    font-size:13px;
-    font-weight:600;
-    margin:0 0 12px;
-    letter-spacing:.01em;
-  }
+  .field h2{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin:0 0 12px}
   .searchrow{display:flex;gap:8px}
   input[type=text],input[type=number],select{
-    font:inherit;
-    color:var(--ink);
-    background:#fff;
-    border:1px solid var(--rule);
-    border-radius:2px;
-    padding:9px 11px;
-    min-width:0;
+    font:inherit;color:var(--ink);background:var(--panel);
+    border:1px solid var(--rule);border-radius:2px;padding:9px 11px;min-width:0;
   }
   input[type=text]{flex:1}
-  input:focus-visible,select:focus-visible,button:focus-visible{
-    outline:2px solid var(--focus);
-    outline-offset:1px;
-  }
+  input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   button{
-    font:inherit;
-    font-weight:500;
-    color:var(--paper);
-    background:var(--water-deep);
-    border:1px solid var(--water-deep);
-    border-radius:2px;
-    padding:9px 16px;
-    cursor:pointer;
+    font:inherit;font-weight:400;color:var(--bg);background:var(--accent);
+    border:1px solid var(--accent);border-radius:2px;padding:9px 18px;cursor:pointer;
   }
-  button:hover{background:#123742;border-color:#123742}
-  button:disabled{opacity:.45;cursor:not-allowed}
-  button.ghost{
-    background:transparent;
-    color:var(--ink);
-    border-color:var(--rule);
-  }
-  button.ghost:hover{background:var(--paper-2);border-color:var(--ink-soft)}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+  button.ghost:hover{background:var(--panel);filter:none}
 
   .results{list-style:none;margin:12px 0 0;padding:0;max-height:230px;overflow:auto}
   .results li{border-top:1px solid var(--rule)}
-  .results button{
-    width:100%;
-    text-align:left;
-    background:transparent;
-    color:var(--ink);
-    border:0;
-    padding:9px 4px;
-    display:flex;
-    justify-content:space-between;
-    gap:12px;
-  }
-  .results button:hover{background:var(--paper-2)}
-  .results .coord{
-    font-family:"IBM Plex Mono",monospace;
-    font-size:11.5px;
-    color:var(--ink-faint);
-    white-space:nowrap;
-  }
+  .results button{width:100%;text-align:left;background:transparent;color:var(--ink);border:0;padding:9px 4px;display:flex;justify-content:space-between;gap:12px}
+  .results button:hover{background:var(--panel)}
+  .results .coord{font-size:12px;color:var(--faint);white-space:nowrap}
 
-  .months{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:4px}
-  .months button{
-    padding:7px 0;
-    background:transparent;
-    color:var(--ink);
-    border:1px solid var(--rule);
-    font-family:"IBM Plex Mono",monospace;
-    font-size:12px;
-  }
-  .months button:hover{background:var(--paper-2)}
-  .months button[aria-pressed=true]{
-    background:var(--water-deep);
-    color:var(--paper);
-    border-color:var(--water-deep);
-  }
-  .yearrow{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-  .yearrow label{font-size:12.5px;color:var(--ink-soft)}
-  .yearrow input{width:88px}
+  .yearrow{display:flex;gap:8px;align-items:center}
+  .yearrow input{width:96px;font-size:20px;text-align:center;letter-spacing:.08em}
 
-  .opts{
-    display:flex;
-    flex-wrap:wrap;
-    gap:18px 26px;
-    align-items:center;
-    padding:16px 0;
-    border-bottom:1px solid var(--rule);
-    font-size:13px;
-  }
-  .opts label{display:flex;gap:7px;align-items:center;color:var(--ink-soft)}
+  .opts{display:flex;flex-wrap:wrap;gap:16px 26px;align-items:center;padding:16px 0;border-bottom:1px solid var(--rule);font-size:13px}
+  .opts label{display:flex;gap:7px;align-items:center;color:var(--soft)}
   .opts select{padding:6px 9px;font-size:13px}
   .spacer{flex:1}
   .exports{display:flex;gap:8px;flex-wrap:wrap}
 
-  /* ---------- status ---------- */
-  .status{
-    font-family:"IBM Plex Mono",monospace;
-    font-size:12.5px;
-    padding:14px 0;
-    color:var(--ink-soft);
-    min-height:44px;
-  }
-  .status.err{color:#8a2f22}
-  .status .bar{
-    display:block;
-    height:2px;
-    background:var(--paper-3);
-    margin-top:8px;
-    overflow:hidden;
-  }
-  .status .bar i{display:block;height:100%;background:var(--water);width:0;transition:width .25s}
+  .status{font-size:13px;padding:14px 0;color:var(--soft);min-height:44px}
+  .status.err{color:#ff9a8a}
+  .status .bar{display:block;height:2px;background:var(--panel-2);margin-top:8px;overflow:hidden}
+  .status .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
 
-  /* ---------- poster stage ---------- */
-  .stage{
-    margin-top:8px;
-    background:var(--paper-2);
-    border:1px solid var(--rule);
-    padding:24px;
-    overflow:auto;
-  }
-  .stage svg{display:block;width:100%;height:auto;max-width:1280px;margin:0 auto;box-shadow:0 2px 14px rgba(18,38,46,.13)}
-  .empty{
-    padding:72px 24px;
-    text-align:center;
-    color:var(--ink-faint);
-    font-family:"IBM Plex Mono",monospace;
-    font-size:13px;
-  }
+  .stage{margin-top:8px;background:var(--panel);border:1px solid var(--rule);padding:20px;max-height:88vh;overflow:auto}
+  .stage svg{display:block;width:100%;height:auto;max-width:820px;margin:0 auto;box-shadow:0 6px 30px rgba(0,0,0,.4)}
+  .empty{padding:80px 24px;text-align:center;color:var(--faint);font-size:13px}
 
-  footer.notes{
-    margin-top:36px;
-    padding-top:20px;
-    border-top:1px solid var(--rule);
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
-    gap:28px;
-    font-size:12.5px;
-    color:var(--ink-soft);
-  }
-  footer.notes h3{font-size:12.5px;margin:0 0 6px;color:var(--ink);font-weight:600}
+  .keys{margin-top:28px;padding-top:20px;border-top:1px solid var(--rule)}
+  .keys h3{font-family:Cinzel,Georgia,serif;font-weight:400;letter-spacing:.1em;font-size:15px;margin:0 0 4px}
+  .keys p{margin:0 0 16px;color:var(--soft);font-size:13px;max-width:64ch}
+  .keygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+  .keygrid .k{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--rule);padding:9px 12px}
+  .keygrid .k svg{display:block;width:100%;height:auto}
+
+  footer.notes{margin-top:36px;padding-top:20px;border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:28px;font-size:12.5px;color:var(--soft)}
+  footer.notes h3{font-size:12.5px;margin:0 0 6px;color:var(--ink);font-weight:500}
   footer.notes p{margin:0 0 8px}
 
-  .warn{
-    background:#f6ecd8;
-    border:1px solid #ddc79b;
-    padding:11px 14px;
-    font-size:12.5px;
-    margin-top:14px;
-    color:#5c451c;
-  }
+  .warn{background:#2a3d2c;border:1px solid #4d6b50;padding:11px 14px;font-size:12.5px;margin-top:14px;color:#cfe6d1}
 
   @media (max-width:860px){
     .controls{grid-template-columns:1fr}
     .field{padding:20px 0}
     .field + .field{padding-left:0;border-left:0;border-top:1px solid var(--rule)}
   }
-  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
@@ -242,7 +120,7 @@
 <header class="mast">
   <div>
     <h1>Tide Almanac</h1>
-    <p>Find a coastal place, pick a month, and get a chart of every high and low water alongside the sun and the moon. Each month exports as an SVG.</p>
+    <p>A whole year of tides on one A1 sheet. Twelve continuous waves, one per month, carrying every high and low with its time and height, and the sun and moon as coloured dots riding the curve.</p>
   </div>
   <div class="colophon">
     tide predictions — NOAA CO-OPS / Open-Meteo<br>
@@ -255,7 +133,7 @@
   <section class="field">
     <h2><label for="q">Where</label></h2>
     <div class="searchrow">
-      <input type="text" id="q" placeholder="Brighton, Monterey, Mont-Saint-Michel…" autocomplete="off" spellcheck="false">
+      <input type="text" id="q" placeholder="Newquay, Monterey, Mont-Saint-Michel…" autocomplete="off" spellcheck="false">
       <button id="go">Search</button>
     </div>
     <ul class="results" id="results" hidden></ul>
@@ -266,43 +144,35 @@
   </section>
 
   <section class="field">
-    <h2>When</h2>
+    <h2><label for="year">Year</label></h2>
     <div class="yearrow">
-      <label for="year">Year</label>
-      <input type="number" id="year" min="1990" max="2035" step="1">
       <button class="ghost" id="prevYear" aria-label="Previous year">&#8592;</button>
+      <input type="number" id="year" min="1990" max="2035" step="1">
       <button class="ghost" id="nextYear" aria-label="Next year">&#8594;</button>
     </div>
-    <div class="months" id="months"></div>
   </section>
 </div>
 
 <div class="opts">
   <label>Units
-    <select id="units">
-      <option value="metric">metres</option>
-      <option value="english">feet</option>
-    </select>
+    <select id="units"><option value="metric">metres</option><option value="english">feet</option></select>
   </label>
   <label>Clock
-    <select id="clock">
-      <option value="24">24-hour</option>
-      <option value="12">12-hour</option>
-    </select>
+    <select id="clock"><option value="24">24-hour</option><option value="12">12-hour</option></select>
   </label>
   <label>Palette
     <select id="theme">
-      <option value="chart">Chart paper</option>
-      <option value="night">Night watch</option>
+      <option value="navy">Navy</option>
+      <option value="paper">Chart paper</option>
       <option value="ink">Ink on white</option>
     </select>
   </label>
   <label><input type="checkbox" id="embedFonts" checked> Embed fonts in exports</label>
   <div class="spacer"></div>
   <div class="exports">
-    <button class="ghost" id="dlSvg" disabled>Download SVG</button>
-    <button class="ghost" id="dlPng" disabled>Download PNG</button>
-    <button class="ghost" id="dlYear" disabled>All 12 months (.zip)</button>
+    <button class="ghost" id="dlSvg" disabled>Poster SVG</button>
+    <button class="ghost" id="dlPng" disabled>Poster PNG</button>
+    <button class="ghost" id="dlKeys">Key SVGs (.zip)</button>
   </div>
 </div>
 
@@ -313,23 +183,28 @@
   <div class="empty">Search for a coastal place to begin.</div>
 </div>
 
+<section class="keys">
+  <h3>Key templates</h3>
+  <p>Nothing on the sheet is an icon — every extra reading is a coloured dot. These are the matching key items, each a separate SVG sized to its own content with no background, so you can drop them onto the poster and place them by hand.</p>
+  <div class="keygrid" id="keygrid"></div>
+</section>
+
 <footer class="notes">
   <div>
+    <h3>Reading the sheet</h3>
+    <p>Each band is one month drawn as a single unbroken trace, about 58 tide cycles wide. High water carries its time above and height below; low water carries height above and time below, so the number nearest the wave is always a height.</p>
+  </div>
+  <div>
     <h3>Where the numbers come from</h3>
-    <p>In United States waters the chart uses NOAA CO-OPS harmonic tide predictions from the nearest official station, referenced to mean lower low water.</p>
-    <p>Everywhere else it reads about a year of sea level from the Open-Meteo marine model, fits the standard tidal constituents to it, and predicts the month from those. The 8&nbsp;km grid is useful on open coast and unreliable in estuaries and narrow inlets.</p>
+    <p>In United States waters, NOAA CO-OPS harmonic predictions from the nearest official station, referenced to mean lower low water. Everywhere else, tidal constituents fitted to about a year of the Open-Meteo 8&nbsp;km ocean model and referenced to mean sea level.</p>
   </div>
   <div>
     <h3>Not for navigation</h3>
-    <p>Predictions ignore weather. Storm surge, barometric pressure and wind routinely shift real water levels by tens of centimetres and occasionally by metres. Use official tide tables for anything that matters.</p>
+    <p>Predictions ignore weather. Storm surge, pressure and wind routinely shift real water levels by tens of centimetres. Use official tide tables for anything that matters.</p>
   </div>
   <div>
-    <h3>Sun and moon</h3>
-    <p>Sunrise, sunset, civil twilight, moonrise, moonset, phase and lunar distance are computed locally from standard low-precision astronomy, accurate to about a minute. No network needed.</p>
-  </div>
-  <div>
-    <h3>Hosting this</h3>
-    <p>This is one self-contained HTML file. Drop it in a repository, turn on GitHub Pages, done. Location and month live in the URL, so any chart you are looking at can be linked to directly.</p>
+    <h3>Printing and hosting</h3>
+    <p>The SVG carries true A1 dimensions, 594&nbsp;×&nbsp;841&nbsp;mm, so it prints at size with no scaling. The tool itself is one self-contained HTML file: drop it in a repository and turn on GitHub Pages.</p>
   </div>
 </footer>
 
@@ -337,13 +212,8 @@
 
 <script>
 "use strict";
-/* ============================================================================
-   Tide Almanac — single file, no build step, no API keys.
-   ========================================================================== */
-
 const MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
-const MON3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DOW3 = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const APP = "TideAlmanac";
 
@@ -481,39 +351,10 @@ function moonPosition(d){
           km: r*6371.0};
 }
 
-function moonAltitude(date, lat, lon){
-  const d = jdOf(date) - 2451543.5;
-  const mp = moonPosition(d);
-  const UT = ((date.getTime()/3600000)%24 + 24)%24;
-  const GMST0 = norm360(mp.Ls + 180)/15;
-  const LST = norm360((GMST0 + UT + lon/15)*15);
-  const HA = norm360(LST - mp.RA);
-  // crude topocentric correction for parallax
-  const alt = asind(sind(lat)*sind(mp.Dec) + cosd(lat)*cosd(mp.Dec)*cosd(HA));
-  const par = asind(1/mp.r);
-  return alt - par*cosd(alt);
-}
 
-function moonEvents(midnightUTC, lat, lon){
-  const step = 10*60000, h0 = -0.583;
-  let prev = moonAltitude(new Date(midnightUTC), lat, lon) - h0;
-  let rise = null, set = null;
-  for(let t = step; t <= 24*3600000; t += step){
-    const cur = moonAltitude(new Date(midnightUTC+t), lat, lon) - h0;
-    if(prev <= 0 && cur > 0 && !rise) rise = refineCross(midnightUTC+t-step, midnightUTC+t, lat, lon, h0);
-    if(prev > 0 && cur <= 0 && !set)  set  = refineCross(midnightUTC+t-step, midnightUTC+t, lat, lon, h0);
-    prev = cur;
-  }
-  return {rise, set};
-}
-function refineCross(a,b,lat,lon,h0){
-  let fa = moonAltitude(new Date(a),lat,lon)-h0;
-  for(let k=0;k<20;k++){
-    const m = (a+b)/2, fm = moonAltitude(new Date(m),lat,lon)-h0;
-    if((fa<=0) === (fm<=0)){ a=m; fa=fm; } else { b=m; }
-  }
-  return new Date(Math.round((a+b)/2));
-}
+
+
+
 
 // Times when elongation crosses 0/90/180/270 inside a UTC window.
 function principalPhases(startUTC, endUTC){
@@ -726,14 +567,14 @@ async function nearestStations(lat,lon,k=6){
 
 const ymd = (y,m,d) => `${y}${pad2(m)}${pad2(d)}`;
 
-async function noaaRange(stationId, from, to, units){
+async function noaaRange(stationId, from, to, units, hiloOnly){
   const base = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=${stationId}`
     + `&product=predictions&datum=MLLW&time_zone=lst_ldt&units=${units}&format=json&application=${APP}`
     + `&begin_date=${from}&end_date=${to}`;
   const hilo = await getJSON(base+"&interval=hilo", "NOAA tide predictions");
   if(hilo.error) throw new Error("NOAA says: "+hilo.error.message);
   let hourly = [];
-  try{
+  if(!hiloOnly) try{
     const h = await getJSON(base+"&interval=h", "NOAA tide predictions");
     if(!h.error) hourly = h.predictions||[];
   }catch(e){ /* subordinate stations only publish highs and lows */ }
@@ -787,11 +628,6 @@ async function marineHarmonics(lat, lon, onProgress){
 function parseWall(s){
   return {y:+s.slice(0,4), m:+s.slice(5,7), d:+s.slice(8,10), hh:+s.slice(11,13), mm:+s.slice(14,16)};
 }
-function wallMinutes(s, y0, m0){
-  const p = parseWall(s);
-  const day = Math.round((Date.UTC(p.y,p.m-1,p.d) - Date.UTC(y0,m0-1,1))/86400000);
-  return day*1440 + p.hh*60 + p.mm;
-}
 
 /* Find highs and lows in an hourly series by parabolic fit. */
 function extremaFrom(points){
@@ -812,406 +648,361 @@ function extremaFrom(points){
   return out;
 }
 
-/* ------------------------------------------------------------- month assembly */
-async function buildMonth(loc, year, month, opts, onProgress){
-  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const y0=year, m0=month;
-  const pad = 1;
-  const start = new Date(Date.UTC(year, month-1, 1-pad));
-  const end   = new Date(Date.UTC(year, month-1, days+pad));
-  const iso = d => d.toISOString().slice(0,10);
-
-  let hiloRaw, curveRaw, source, datum, precision, harmonics = null;
-  onProgress?.("Fetching tide predictions…", .25);
-
-  if(loc.station){
-    const r = await noaaRange(loc.station.id,
-      ymd(start.getUTCFullYear(), start.getUTCMonth()+1, start.getUTCDate()),
-      ymd(end.getUTCFullYear(),   end.getUTCMonth()+1,   end.getUTCDate()),
-      opts.units);
-    hiloRaw = r.hilo.map(p=>({t:wallMinutes(p.t,y0,m0), h:p.h, type:p.type, ext:true}));
-    curveRaw = r.hourly.map(p=>({t:wallMinutes(p.t,y0,m0), h:p.h}));
-    source = `NOAA CO-OPS station ${loc.station.id} · ${loc.station.name}`;
-    datum = "MLLW";
-    precision = r.hourly.length ? "harmonic" : "harmonic (high/low only)";
-  } else {
-    const fit = await marineHarmonics(loc.lat, loc.lon, onProgress);
-    // Walk the month day by day so each local midnight is anchored correctly
-    // across daylight-saving changes, then sample every 10 minutes.
-    const k = opts.units === "english" ? 3.28084 : 1;
-    curveRaw = [];
-    for(let d = 1-pad; d <= days+pad; d++){
-      const midUTC = fromLocal(year, month, d, 0, 0, loc.tz).getTime();
-      const base = (d-1)*1440;
-      for(let mm = 0; mm < 1440; mm += 10){
-        curveRaw.push({t: base+mm, h: tideAt(fit, (midUTC + mm*60000 - EPOCH_MS)/3600000) * k});
-      }
-    }
-    hiloRaw = extremaFrom(curveRaw).map(p=>({...p, ext:true}));
-    source = `Open-Meteo marine model · ${fit.parts.length} constituents fitted to ${fit.days} days`;
-    datum = "MSL";
-    precision = "harmonic fit";
-    harmonics = fit;
-  }
-  if(!hiloRaw.length) throw new Error("No tide predictions came back for that month. Try another station or a different date.");
-
-  // merged knots: hourly samples plus the exact extremes
-  const knots = [...curveRaw.map(p=>({t:p.t,h:p.h,ext:false})), ...hiloRaw.map(p=>({t:p.t,h:p.h,ext:true}))]
-    .sort((a,b)=>a.t-b.t)
-    .filter((p,i,arr)=> i===0 || Math.abs(p.t-arr[i-1].t) > 0.5 || p.ext);
-  const series = makeSeries(knots);
-
-  // per-day astronomy and event grouping
-  onProgress?.("Computing sun and moon…", .7);
-  const unitLabel = opts.units==="english" ? "ft" : "m";
-  const out = [];
-  for(let d=1; d<=days; d++){
-    const midnight = fromLocal(year, month, d, 0, 0, loc.tz).getTime();
-    const sun = sunEvents(year, month, d, loc.lat, loc.lon, loc.tz);
-    const mn  = moonEvents(midnight, loc.lat, loc.lon);
-    const mid = moonPosition(jdOf(new Date(midnight+43200000)) - 2451543.5);
-    const toMin = date => date ? (date.getTime()-midnight)/60000 + tzOffset(date,loc.tz) - tzOffset(new Date(midnight),loc.tz) : null;
-    const lo = (d-1)*1440, hi = d*1440;
-    const events = hiloRaw.filter(p=>p.t>=lo && p.t<hi).map(p=>({min:p.t-lo, h:p.h, type:p.type}));
-    const dayVals = [];
-    for(let t=lo;t<=hi;t+=10) dayVals.push(series.at(t));
-    out.push({
-      day:d,
-      dow:new Date(Date.UTC(year,month-1,d)).getUTCDay(),
-      midnight,
-      events,
-      range: Math.max(...dayVals) - Math.min(...dayVals),
-      sun:{ rise:toMin(sun.rise), set:toMin(sun.set), dawn:toMin(sun.dawn), dusk:toMin(sun.dusk),
-            polar:sun.polar, twiPolar:sun.twiPolar },
-      moon:{ rise:toMin(mn.rise), set:toMin(mn.set), illum:mid.illum, elong:mid.elong, km:mid.km }
-    });
-  }
-
-  const monthStartUTC = fromLocal(year,month,1,0,0,loc.tz).getTime();
-  const monthEndUTC = fromLocal(year,month,days,23,59,loc.tz).getTime();
-  const phases = principalPhases(monthStartUTC, monthEndUTC).map(p=>{
-    const off = tzOffset(p.time, loc.tz);
-    const localMs = p.time.getTime() + off*60000;
-    const dt = new Date(localMs);
-    return {name:p.name, day:dt.getUTCDate(), hh:dt.getUTCHours(), mm:dt.getUTCMinutes(), target:p.target};
-  });
-
-  const allEvents = hiloRaw.filter(p=>p.t>=0 && p.t<days*1440);
-  const highest = allEvents.reduce((a,b)=>b.h>a.h?b:a, allEvents[0]);
-  const lowest  = allEvents.reduce((a,b)=>b.h<a.h?b:a, allEvents[0]);
-  const ranges = out.map(d=>d.range);
-  const spring = out[ranges.indexOf(Math.max(...ranges))];
-  const neap   = out[ranges.indexOf(Math.min(...ranges))];
-
-  return {
-    loc, year, month, days, series, days_: out, phases, source, datum, precision, harmonics,
-    unitLabel, units:opts.units,
-    stats:{
-      highest:{...highest, day:Math.floor(highest.t/1440)+1, min:highest.t%1440},
-      lowest:{...lowest, day:Math.floor(lowest.t/1440)+1, min:lowest.t%1440},
-      meanRange: ranges.reduce((a,b)=>a+b,0)/ranges.length,
-      spring, neap, count: allEvents.length
-    }
-  };
-}
-
-/* ------------------------------------------------------------------- palettes */
-const THEMES = {
-  chart:{
-    bg:"#eef2ec", panel:"#e2e9e3", ink:"#12262e", soft:"#4a6a72", faint:"#8ba5a6",
-    rule:"#c3d2cc", water:"#2e6e7e", waterFill:"#b9d5d8", waterDeep:"#1b4a58",
-    night:"#c9d6d4", twilight:"#d9e2dd", sun:"#c8802c", moonLit:"#f4efe2",
-    moonDark:"#b9c8c6", weekend:"#e5ece5", bar:"#5f8f92"
-  },
-  night:{
-    bg:"#0b1e26", panel:"#102831", ink:"#dcece9", soft:"#8fb2b3", faint:"#5f8386",
-    rule:"#22434c", water:"#5fd3c0", waterFill:"#17414a", waterDeep:"#9fe8d9",
-    night:"#081920", twilight:"#0e242c", sun:"#f2b441", moonLit:"#f6f0dd",
-    moonDark:"#1b3a42", weekend:"#123039", bar:"#3f8f8a"
-  },
-  ink:{
-    bg:"#ffffff", panel:"#f4f4f4", ink:"#000000", soft:"#555555", faint:"#8a8a8a",
-    rule:"#c9c9c9", water:"#000000", waterFill:"#dcdcdc", waterDeep:"#000000",
-    night:"#e2e2e2", twilight:"#efefef", sun:"#000000", moonLit:"#ffffff",
-    moonDark:"#9a9a9a", weekend:"#f2f2f2", bar:"#6f6f6f"
-  }
-};
-
-/* --------------------------------------------------------------- SVG rendering */
-const L = {
-  W:1280, M:48, ROWH:32,
-  colDate:92, colMoon:30, colStrip:500, colSun:64, colEvents:400, colRange:84
-};
-function columns(){
-  const x0 = L.M;
-  const xMoon = x0 + L.colDate;
-  const xStrip = xMoon + L.colMoon + 4;
-  const xSun = xStrip + L.colStrip + 6;
-  const xEv = xSun + L.colSun + 4;
-  const xRange = xEv + L.colEvents;
-  return {x0,xMoon,xStrip,xSun,xEv,xRange, right:L.W-L.M};
-}
 
 function fmtTime(mins, clock){
-  if(mins==null || !isFinite(mins)) return "—";
+  if(mins == null || !isFinite(mins)) return "\u2014";
   const m = ((Math.round(mins) % 1440) + 1440) % 1440;
   const h24 = Math.floor(m/60), mm = m%60;
-  if(clock==="12"){
-    const ap = h24>=12 ? "pm" : "am";
-    let h = h24%12; if(h===0) h=12;
+  if(clock === "12"){
+    const ap = h24 >= 12 ? "pm" : "am";
+    let h = h24 % 12; if(h === 0) h = 12;
     return `${h}:${pad2(mm)}${ap}`;
   }
   return `${pad2(h24)}:${pad2(mm)}`;
 }
 const fmtH = (v,u) => {
-  const s = (u==="english" ? v.toFixed(1) : v.toFixed(2));
-  return /^-0\.?0*$/.test(s) ? s.slice(1) : s;   // no negative zero
+  const s = (u === "english" ? v.toFixed(1) : v.toFixed(1));
+  return /^-0\.?0*$/.test(s) ? s.slice(1) : s;      // no negative zero
 };
 
-function moonDisc(cx, cy, r, elong, T, flip){
-  // elong 0 = new, 180 = full. North of the equator the waxing moon is lit on
-  // the right; south of it the whole disc appears mirrored.
-  const lit = (1 - cosd(elong)) / 2;
-  let waxing = elong < 180;
-  if(flip) waxing = !waxing;
-  const dark = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${T.moonDark}"/>`;
-  const rim  = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${T.rule}" stroke-width=".6"/>`;
-  if(lit > 0.995) return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${T.moonLit}"/>` + rim;
-  if(lit < 0.005) return dark + rim;
-  // Outer semicircle on the lit side, closed by the terminator ellipse. The
-  // terminator bulges across the centre line when gibbous, back when crescent.
-  const rx = Math.max(r*Math.abs(2*lit - 1), 0.01);
-  const w  = waxing ? 1 : 0;
-  const ts = lit > 0.5 ? w : 1 - w;
-  return dark
-    + `<path d="M${cx} ${cy-r}A${r} ${r} 0 0 ${w} ${cx} ${cy+r}A${rx.toFixed(2)} ${r} 0 0 ${ts} ${cx} ${cy-r}Z" fill="${T.moonLit}"/>`
-    + rim;
+/* ------------------------------------------------------------- year assembly
+   One continuous tide trace per month, twelve months on one A1 sheet. Every
+   high and low carries its time and height; sunrise, sunset and the principal
+   moon phases ride the curve as coloured dots. */
+
+const DAYS_IN = (y,m) => new Date(Date.UTC(y,m,0)).getUTCDate();
+const isLeap = y => DAYS_IN(y,2) === 29;
+
+async function buildYear(loc, year, opts, onProgress){
+  const nDays = isLeap(year) ? 366 : 365;
+
+  // Local midnight of every day, padded one day either side, as UTC ms. All
+  // minute arithmetic in the poster counts from local midnight on 1 January.
+  const midnights = new Float64Array(nDays + 2);
+  for(let i = -1; i <= nDays; i++){
+    midnights[i+1] = fromLocal(year, 1, 1+i, 0, 0, loc.tz).getTime();
+  }
+  const midnightOf = dayIdx => midnights[clamp(dayIdx,-1,nDays) + 1];
+  const minToHours = m => {
+    const day = Math.floor(m/1440);
+    return (midnightOf(day) + (m - day*1440)*60000 - EPOCH_MS)/3600000;
+  };
+
+  // month start in minutes-since-1-Jan, and day count
+  const months = [];
+  let acc = 0;
+  for(let m = 1; m <= 12; m++){
+    const dm = DAYS_IN(year, m);
+    months.push({month:m, days:dm, startMin:acc*1440, endMin:(acc+dm)*1440});
+    acc += dm;
+  }
+
+  const k = opts.units === "english" ? 3.28084 : 1;
+  let atMin, extremes, source, datum, precision, harmonics = null;
+
+  onProgress?.("Fetching tide predictions…", .2);
+  if(loc.station){
+    // Highs and lows for the whole year in one request; the curve between them
+    // is a monotone spline through the exact extremes, which at this scale is
+    // indistinguishable from the hourly series and costs one fetch instead of two.
+    const from = new Date(Date.UTC(year-1, 11, 20)), to = new Date(Date.UTC(year, 11, 41));
+    const r = await noaaRange(loc.station.id,
+      ymd(from.getUTCFullYear(), from.getUTCMonth()+1, from.getUTCDate()),
+      ymd(to.getUTCFullYear(),   to.getUTCMonth()+1,   to.getUTCDate()),
+      opts.units, true);
+    const knots = r.hilo.map(p=>({t:yearMinutes(p.t, year), h:p.h, type:p.type, ext:true}))
+                        .sort((a,b)=>a.t-b.t);
+    if(knots.length < 100) throw new Error("NOAA returned too few predictions for that year.");
+    const series = makeSeries(knots);
+    atMin = m => series.at(m);
+    extremes = knots;
+    source = `NOAA CO-OPS station ${loc.station.id} · ${loc.station.name}`;
+    datum = "MLLW";
+    precision = "harmonic prediction";
+  } else {
+    const fit = await marineHarmonics(loc.lat, loc.lon, onProgress);
+    harmonics = fit;
+    atMin = m => tideAt(fit, minToHours(m)) * k;
+    onProgress?.("Finding highs and lows…", .62);
+    const sampled = [];
+    for(let m = -1440; m <= (nDays+1)*1440; m += 10) sampled.push({t:m, h:atMin(m)});
+    extremes = extremaFrom(sampled).map(p=>({...p, ext:true}));
+    source = `Open-Meteo marine model · ${fit.parts.length} constituents fitted to ${fit.days} days`;
+    datum = "MSL";
+    precision = "harmonic fit";
+  }
+
+  // sun, per day
+  onProgress?.("Computing sun and moon…", .78);
+  const sun = [];
+  for(let i = 0; i < nDays; i++){
+    const dt = new Date(Date.UTC(year,0,1+i));
+    const e = sunEvents(dt.getUTCFullYear(), dt.getUTCMonth()+1, dt.getUTCDate(), loc.lat, loc.lon, loc.tz);
+    const mid = midnightOf(i);
+    const toAbs = x => x ? i*1440 + (x.getTime()-mid)/60000 + tzOffset(x,loc.tz) - tzOffset(new Date(mid),loc.tz) : null;
+    sun.push({day:i, dow:dt.getUTCDay(), rise:toAbs(e.rise), set:toAbs(e.set), polar:e.polar});
+  }
+
+  // principal moon phases across the year
+  const phases = principalPhases(midnightOf(0), midnightOf(nDays)).map(p=>{
+    const off = tzOffset(p.time, loc.tz);
+    const local = p.time.getTime() + off*60000;
+    const dayIdx = Math.floor((local - (midnightOf(0) + tzOffset(new Date(midnightOf(0)),loc.tz)*60000))/86400000);
+    const dt = new Date(local);
+    return {name:p.name, target:p.target, min: dayIdx*1440 + dt.getUTCHours()*60 + dt.getUTCMinutes()};
+  });
+
+  // slice per month
+  for(const M of months){
+    M.extremes = extremes.filter(p => p.t >= M.startMin && p.t < M.endMin);
+    M.sun      = sun.filter(s => s.day*1440 >= M.startMin && s.day*1440 < M.endMin);
+    M.phases   = phases.filter(p => p.min >= M.startMin && p.min < M.endMin);
+  }
+
+  const inYear = extremes.filter(p => p.t >= 0 && p.t < nDays*1440);
+  const highs = inYear.filter(p=>p.type==="H"), lows = inYear.filter(p=>p.type==="L");
+  const hi = highs.reduce((a,b)=>b.h>a.h?b:a, highs[0]);
+  const lo = lows.reduce((a,b)=>b.h<a.h?b:a, lows[0]);
+
+  return {
+    loc, year, nDays, months, atMin, extremes, source, datum, precision, harmonics,
+    unitLabel: opts.units === "english" ? "ft" : "m", units: opts.units,
+    yMin: lo.h, yMax: hi.h,
+    stats:{
+      highest:hi, lowest:lo, count:inYear.length,
+      meanRange: months.reduce((a,M)=>{
+        const hs = M.extremes.filter(p=>p.type==="H"), ls = M.extremes.filter(p=>p.type==="L");
+        if(!hs.length || !ls.length) return a;
+        return a + (hs.reduce((s,p)=>s+p.h,0)/hs.length - ls.reduce((s,p)=>s+p.h,0)/ls.length);
+      },0)/12
+    }
+  };
 }
 
-function renderPoster(M, opts){
-  const T = THEMES[opts.theme] || THEMES.chart;
-  const C = columns();
-  const clock = opts.clock;
-  const days = M.days;
-  const south = M.loc.lat < 0;
-  const headerH = 128, ribbonH = 168, moonBarH = 26, legendH = 30;
-  const yRibbon = headerH + moonBarH + 14;
-  const yLegend = yRibbon + ribbonH + 16;
-  const yRows = yLegend + legendH + 10;
-  const rowsH = days * L.ROWH;
-  const footerH = 108;
-  const H = yRows + rowsH + footerH;
+// "YYYY-MM-DD HH:MM" -> minutes since local midnight on 1 January of `year`
+function yearMinutes(s, year){
+  const p = parseWall(s);
+  const day = Math.round((Date.UTC(p.y,p.m-1,p.d) - Date.UTC(year,0,1))/86400000);
+  return day*1440 + p.hh*60 + p.mm;
+}
+
+/* ------------------------------------------------------------------ palettes
+   Every piece of extra information is a coloured dot; nothing is an icon. */
+const THEMES = {
+  navy:{
+    bg:"#123a56", wave:"#f2ede1", ink:"#f2ede1", soft:"#a8c0ce", faint:"#6f92a8",
+    dots:{ high:"#f2b544", low:"#5fc4d0", sunrise:"#ff8a5b", sunset:"#e0607e",
+           newMoon:"#8c9dbc", firstQuarter:"#8fd8a8", fullMoon:"#ffffff", lastQuarter:"#bfa2e8" }
+  },
+  paper:{
+    bg:"#eef1ea", wave:"#1b4a58", ink:"#12262e", soft:"#4a6a72", faint:"#8ba5a6",
+    dots:{ high:"#c07a12", low:"#1f7f92", sunrise:"#d1521f", sunset:"#a83355",
+           newMoon:"#5a6a88", firstQuarter:"#2e8b5f", fullMoon:"#8a6a1f", lastQuarter:"#6b4ba8" }
+  },
+  ink:{
+    bg:"#ffffff", wave:"#000000", ink:"#000000", soft:"#555555", faint:"#8a8a8a",
+    dots:{ high:"#000000", low:"#000000", sunrise:"#000000", sunset:"#000000",
+           newMoon:"#000000", firstQuarter:"#000000", fullMoon:"#000000", lastQuarter:"#000000" }
+  }
+};
+
+const KEY_ITEMS = [
+  {id:"high",         label:"High water",    note:"time above, height below"},
+  {id:"low",          label:"Low water",     note:"height above, time below"},
+  {id:"sunrise",      label:"Sunrise",       note:"on the curve"},
+  {id:"sunset",       label:"Sunset",        note:"on the curve"},
+  {id:"newMoon",      label:"New moon",      note:"spring tides follow"},
+  {id:"firstQuarter", label:"First quarter", note:"neap tides follow"},
+  {id:"fullMoon",     label:"Full moon",     note:"spring tides follow"},
+  {id:"lastQuarter",  label:"Last quarter",  note:"neap tides follow"}
+];
+
+/* ------------------------------------------------------------- A1 poster
+   All units are millimetres so the sheet prints at true A1. */
+const PAGE = {
+  W:594, H:841, M:16,
+  top:70, footer:34,
+  monthLabel:8, timeRow:3.6, heightRow:3.6, wave:31, dateRow:4.2, gap:3.4,
+  fsSmall:2.3, fsDate:2.2, fsMonth:6.4
+};
+const DISPLAY = 'Cinzel, "Trajan Pro", Georgia, serif';
+const FIGURE  = 'Jost, "Century Gothic", "Avenir Next", sans-serif';
+const CHW = 0.58;                              // digit advance, in ems, for Jost
+
+// Nudge labels apart where a coast crowds two highs together. Substituting
+// y[i] = x[i] - i*pitch turns the minimum-spacing constraint into "y must not
+// decrease", so pool-adjacent-violators gives the arrangement with the least
+// total movement and, unlike a single forward pass, leaves no overlaps at all.
+function spread(centres, pitch, lo, hi){
+  const n = centres.length;
+  if(!n) return [];
+  if((n-1)*pitch > hi - lo){                       // cannot fit: lay out evenly
+    const step = (hi - lo)/(n-1 || 1);
+    return centres.map((_,i)=>lo + i*step);
+  }
+  const val = [], cnt = [];
+  for(let i=0;i<n;i++){
+    let v = centres[i] - i*pitch, c = 1;
+    while(val.length && val[val.length-1] > v){
+      const pv = val.pop(), pc = cnt.pop();
+      v = (v*c + pv*pc)/(c+pc); c += pc;
+    }
+    val.push(v); cnt.push(c);
+  }
+  const out = new Array(n);
+  let k = 0;
+  for(let b=0;b<val.length;b++) for(let j=0;j<cnt[b];j++, k++) out[k] = val[b] + k*pitch;
+  if(out[0] < lo){ const d = lo - out[0]; for(let i=0;i<n;i++) out[i] += d; }
+  else if(out[n-1] > hi){ const d = out[n-1] - hi; for(let i=0;i<n;i++) out[i] -= d; }
+  return out;
+}
+
+function renderYear(Y, opts){
+  const T = THEMES[opts.theme] || THEMES.navy;
+  const P = PAGE;
+  const cw = P.W - 2*P.M;
+  const band = (P.H - P.top - P.footer)/12;
   const s = [];
-  const p = (...x) => s.push(...x);
+  const p = (...x)=>s.push(...x);
+  const n1 = v => Math.round(v*10)/10;
 
-  const t = (x,y,txt,{size=10,fill=T.ink,anchor="start",family="mono",weight=400,ls=0,style=""}={}) =>
-    `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="${family==="mono"?"IBM Plex Mono, ui-monospace, Menlo, monospace":"Bodoni Moda, Didot, Georgia, serif"}" `
-    + `font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}"`
-    + (ls?` letter-spacing="${ls}"`:"") + (style?` font-style="${style}"`:"") + `>${esc(txt)}</text>`;
+  const txt = (x,y,t) => `<text x="${n1(x)}" y="${n1(y)}">${esc(t)}</text>`;
+  const group = (attrs, body) => body.length ? `<g ${attrs}>${body.join("")}</g>` : "";
 
-  p(`<rect width="${L.W}" height="${H}" fill="${T.bg}"/>`);
+  p(`<rect width="${P.W}" height="${P.H}" fill="${T.bg}"/>`);
 
-  /* ---- header ---- */
-  const place = `${M.loc.name}${M.loc.admin?", "+M.loc.admin:""}`;
-  p(t(L.M, 74, place, {size:44, family:"serif", weight:400}));
-  p(t(L.M, 104, `${MONTHS[M.month-1]} ${M.year}`, {size:24, family:"serif", fill:T.soft, style:"italic"}));
-
+  /* masthead */
+  const place = `${Y.loc.name}${Y.loc.admin ? ", " + Y.loc.admin : ""}`;
+  p(`<text x="${P.M}" y="34" font-family='${DISPLAY}' font-size="13" fill="${T.ink}" letter-spacing="0.6">${esc(place.toUpperCase())}</text>`);
+  p(`<text x="${P.M}" y="50" font-family='${DISPLAY}' font-size="9" fill="${T.soft}" letter-spacing="2.4">${Y.year}</text>`);
   const meta = [
-    ["source", M.loc.station ? `NOAA ${M.loc.station.id}` : "Open-Meteo model"],
-    ["datum", M.datum + " · heights in " + (M.units==="english"?"feet":"metres")],
-    ["clock", tzAbbr(M.loc.tz, new Date(M.days_[0].midnight)) + " · " + M.loc.tz],
-    ["position", `${Math.abs(M.loc.lat).toFixed(4)}°${M.loc.lat>=0?"N":"S"}  ${Math.abs(M.loc.lon).toFixed(4)}°${M.loc.lon>=0?"E":"W"}`]
+    Y.loc.station ? `NOAA ${Y.loc.station.id}` : "Open-Meteo model",
+    `${Y.datum} · ${Y.units === "english" ? "feet" : "metres"}`,
+    `${tzAbbr(Y.loc.tz, new Date())} · ${Y.loc.tz}`,
+    `${Math.abs(Y.loc.lat).toFixed(3)}°${Y.loc.lat>=0?"N":"S"}  ${Math.abs(Y.loc.lon).toFixed(3)}°${Y.loc.lon>=0?"E":"W"}`
   ];
-  meta.forEach(([k,v],i)=>{
-    const y = 42 + i*17;
-    p(t(C.right-172, y, k, {size:9, fill:T.faint}));
-    p(t(C.right, y, v, {size:10, fill:T.soft, anchor:"end"}));
-  });
-  p(`<line x1="${L.M}" y1="${headerH-6}" x2="${C.right}" y2="${headerH-6}" stroke="${T.rule}" stroke-width="1"/>`);
+  meta.forEach((m,i)=>p(`<text x="${P.W-P.M}" y="${24+i*7}" text-anchor="end" font-family='${FIGURE}' font-size="2.9" fill="${T.faint}">${esc(m)}</text>`));
+  p(`<line x1="${P.M}" y1="60" x2="${P.W-P.M}" y2="60" stroke="${T.soft}" stroke-width="0.3"/>`);
 
-  /* ---- moon bar + month ribbon ---- */
-  const rx0 = L.M, rw = C.right - L.M;
-  const xOfMin = m => rx0 + (m/(days*1440))*rw;
+  /* twelve bands */
+  const span = Y.yMax - Y.yMin || 1;
+  const padY = span*0.06;
 
-  const lo = M.series.min, hi = M.series.max;
-  const padY = (hi-lo)*0.10 || 0.4;
-  const yOf = h => yRibbon + ribbonH - ((h-(lo-padY))/((hi+padY)-(lo-padY)))*ribbonH;
+  Y.months.forEach((M,mi)=>{
+    const y0 = P.top + mi*band;
+    const waveTop = y0 + P.monthLabel + P.timeRow + P.heightRow;
+    const waveBot = waveTop + P.wave;
+    const perDay = cw/M.days;
+    const xOf = t => P.M + ((t - M.startMin)/(M.days*1440))*cw;
+    const yOf = h => waveBot - ((h - (Y.yMin-padY))/(span + 2*padY))*P.wave;
 
-  const rMax = Math.max(...M.days_.map(d=>d.range));
-  p(`<rect x="${rx0}" y="${yRibbon}" width="${rw}" height="${ribbonH}" fill="${T.panel}" opacity=".55"/>`);
-
-  // One path carrying both fill and stroke: the closing edges lie on the frame,
-  // so the outline reads as the water surface and the file stays half the size.
-  let path = "";
-  for(let m=0; m<=days*1440; m+=20){
-    path += (m?"L":"M") + xOfMin(m).toFixed(1) + " " + yOf(M.series.at(m)).toFixed(1);
-  }
-  path += `L${xOfMin(days*1440).toFixed(1)} ${(yRibbon+ribbonH).toFixed(1)}L${rx0} ${(yRibbon+ribbonH).toFixed(1)}Z`;
-  p(`<path d="${path}" fill="${T.waterFill}" fill-opacity=".85" stroke="${T.water}" stroke-width="1" stroke-linejoin="round"/>`);
-  p(`<rect x="${rx0}" y="${yRibbon}" width="${rw}" height="${ribbonH}" fill="none" stroke="${T.rule}" stroke-width=".8"/>`);
-
-  // datum line at zero if it sits inside the frame
-  if(lo-padY < 0 && hi+padY > 0){
-    p(`<line x1="${rx0}" y1="${yOf(0).toFixed(1)}" x2="${C.right}" y2="${yOf(0).toFixed(1)}" stroke="${T.soft}" stroke-width=".6" stroke-dasharray="3 3"/>`);
-  }
-  p(t(rx0+5, yRibbon+12, `${fmtH(hi,M.units)} ${M.unitLabel}`, {size:11, fill:T.soft}));
-  p(t(rx0+5, yRibbon+ribbonH-6, `${fmtH(lo,M.units)}`, {size:11, fill:T.soft}));
-
-  // day ticks every 5 days
-  for(let d=1; d<=days; d++){
-    const x = xOfMin((d-1)*1440);
-    const major = (d===1 || d%5===0);
-    p(`<line x1="${x.toFixed(1)}" y1="${yRibbon+ribbonH}" x2="${x.toFixed(1)}" y2="${yRibbon+ribbonH+(major?6:3)}" stroke="${T.rule}" stroke-width=".8"/>`);
-    if(major) p(t(x+2, yRibbon+ribbonH+14, String(d), {size:9, fill:T.faint}));
-  }
-
-  // principal moon phases above the ribbon
-  M.phases.forEach(ph=>{
-    const x = xOfMin((ph.day-1)*1440 + ph.hh*60 + ph.mm);
-    const cx = clamp(x, rx0+10, C.right-10);
-    p(moonDisc(cx, headerH+12, 7, ph.target, T, south));
-    p(`<line x1="${x.toFixed(1)}" y1="${headerH+20}" x2="${x.toFixed(1)}" y2="${yRibbon}" stroke="${T.rule}" stroke-width=".6" stroke-dasharray="2 2"/>`);
-    const anchor = x > C.right-90 ? "end" : "start";
-    p(t(anchor==="end"?cx-11:cx+11, headerH+15.5, `${ph.name.toLowerCase()} ${ph.day} ${fmtTime(ph.hh*60+ph.mm, clock)}`,
-        {size:8.5, fill:T.soft, anchor}));
-  });
-
-  /* ---- legend ---- */
-  const ly = yLegend + 18;
-  let lx = L.M;
-  const legendItem = (glyph, label, w) => { p(glyph); p(t(lx+16, ly+3.5, label, {size:9, fill:T.soft})); lx += w; };
-  const sw = (fill) => `<rect x="${lx}" y="${ly-5}" width="11" height="9" fill="${fill}" stroke="${T.rule}" stroke-width=".5"/>`;
-  legendItem(sw(T.night), "night", 76);
-  legendItem(sw(T.twilight), "civil twilight", 120);
-  legendItem(`<path d="M ${lx} ${ly+3} q 5.5 -10 11 0" fill="none" stroke="${T.water}" stroke-width="1.3"/>`, "water level", 108);
-  legendItem(`<circle cx="${lx+5.5}" cy="${ly-0.5}" r="4" fill="none" stroke="${T.sun}" stroke-width="1.2"/>`, "sun, low rail", 128);
-  legendItem(`<circle cx="${lx+5.5}" cy="${ly-0.5}" r="3.4" fill="none" stroke="${T.soft}" stroke-width="1"/>`, "moon, high rail", 138);
-  legendItem(`<path d="M ${lx+5.5} ${ly-5} l 4.5 7 h -9 Z" fill="${T.waterDeep}"/>`, "high water", 100);
-  legendItem(`<path d="M ${lx+5.5} ${ly+3} l 4.5 -7 h -9 Z" fill="${T.water}" opacity=".65"/>`, "low water", 96);
-  legendItem(`<rect x="${lx}" y="${ly-4}" width="11" height="7" fill="${T.bar}" opacity=".7"/>`, "daily range", 100);
-  p(`<line x1="${L.M}" y1="${yRows-8}" x2="${C.right}" y2="${yRows-8}" stroke="${T.ink}" stroke-width="1"/>`);
-
-  /* ---- day rows ---- */
-  const stripX = C.xStrip, stripW = L.colStrip;
-  const xh = m => stripX + (clamp(m,0,1440)/1440)*stripW;
-  const rowsLo = Math.min(...M.days_.map(d=>{
-    let v=Infinity; for(let m=(d.day-1)*1440;m<=d.day*1440;m+=15) v=Math.min(v,M.series.at(m)); return v; }));
-  const rowsHi = Math.max(...M.days_.map(d=>{
-    let v=-Infinity; for(let m=(d.day-1)*1440;m<=d.day*1440;m+=15) v=Math.max(v,M.series.at(m)); return v; }));
-  const rSpan = (rowsHi-rowsLo) || 1;
-
-  M.days_.forEach((d,i)=>{
-    const y = yRows + i*L.ROWH;
-    const cy = y + L.ROWH/2;
-    const weekend = d.dow===0 || d.dow===6;
-    if(weekend) p(`<rect x="${L.M}" y="${y}" width="${C.right-L.M}" height="${L.ROWH}" fill="${T.weekend}"/>`);
-    p(`<line x1="${L.M}" y1="${y}" x2="${C.right}" y2="${y}" stroke="${T.rule}" stroke-width=".5"/>`);
-
-    // date
-    p(t(C.x0+20, cy+4, String(d.day), {size:15, fill:T.ink, weight:500, anchor:"end"}));
-    p(t(C.x0+28, cy+3.5, DOW3[d.dow].toLowerCase(), {size:10, fill:weekend?T.water:T.faint}));
-
-    // moon
-    p(moonDisc(C.xMoon+13, cy, 8.5, d.moon.elong, T, south));
-
-    // strip: night, twilight, curve
-    const sy = y+4, sh = L.ROWH-8;
-    p(`<rect x="${stripX}" y="${sy}" width="${stripW}" height="${sh}" fill="${T.panel}" opacity=".55"/>`);
-    const S = d.sun;
-    const band = (a,b,fill) => {
-      if(a==null||b==null) return;
-      const x1=xh(Math.min(a,b)), x2=xh(Math.max(a,b));
-      if(x2-x1 > 0.4) p(`<rect x="${x1.toFixed(1)}" y="${sy}" width="${(x2-x1).toFixed(1)}" height="${sh}" fill="${fill}"/>`);
-    };
-    if(S.polar === "night"){
-      p(`<rect x="${stripX}" y="${sy}" width="${stripW}" height="${sh}" fill="${T.night}"/>`);
-      band(S.dawn, S.dusk, T.twilight);          // polar night still gets a twilight glow
-    } else if(S.polar !== "day"){
-      if(S.dawn != null && S.dusk != null){
-        band(0, S.dawn, T.night); band(S.dusk, 1440, T.night);
-        band(S.dawn, S.rise, T.twilight); band(S.set, S.dusk, T.twilight);
-      } else {
-        // Sun rises and sets but never reaches civil twilight depth: white nights.
-        const fill = S.twiPolar === "day" ? T.twilight : T.night;
-        band(0, S.rise, fill); band(S.set, 1440, fill);
-      }
+    /* month name, and the month's own extremes */
+    p(`<text x="${P.M}" y="${n1(y0+P.monthLabel-1.6)}" font-family='${DISPLAY}' font-size="${P.fsMonth}" fill="${T.ink}" letter-spacing="1.6">${MONTHS[M.month-1].toUpperCase()}</text>`);
+    const mh = M.extremes.filter(e=>e.type==="H"), ml = M.extremes.filter(e=>e.type==="L");
+    if(mh.length && ml.length){
+      const top = mh.reduce((a,b)=>b.h>a.h?b:a), bot = ml.reduce((a,b)=>b.h<a.h?b:a);
+      p(`<text x="${P.W-P.M}" y="${n1(y0+P.monthLabel-2.2)}" text-anchor="end" font-family='${FIGURE}' font-size="2.6" fill="${T.faint}">`
+        + `${esc(`${M.extremes.length} tides   highest ${fmtH(top.h,Y.units)}   lowest ${fmtH(bot.h,Y.units)} ${Y.unitLabel}`)}</text>`);
     }
-    // hour ticks
-    for(let hh=6; hh<24; hh+=6){
-      const x = xh(hh*60);
-      p(`<line x1="${x.toFixed(1)}" y1="${sy}" x2="${x.toFixed(1)}" y2="${sy+sh}" stroke="${T.rule}" stroke-width=".4" opacity=".8"/>`);
-    }
-    // curve for the day
-    let dp = "";
-    for(let m=0; m<=1440; m+=10){
-      const v = M.series.at((d.day-1)*1440 + m);
-      const yy = sy + sh - ((v-rowsLo)/rSpan)*(sh-2) - 1;
-      dp += (m?"L":"M") + xh(m).toFixed(1) + " " + yy.toFixed(1);
-    }
-    dp += `L${(stripX+stripW).toFixed(1)} ${sy+sh}L${stripX} ${sy+sh}Z`;
-    p(`<path d="${dp}" fill="${T.waterFill}" fill-opacity=".7" stroke="${T.water}" stroke-width="1.1"/>`);
-    // sun markers
-    if(S.rise!=null) p(`<circle cx="${xh(S.rise).toFixed(1)}" cy="${(sy+sh).toFixed(1)}" r="3" fill="none" stroke="${T.sun}" stroke-width="1.2"/>`);
-    if(S.set!=null)  p(`<circle cx="${xh(S.set).toFixed(1)}" cy="${(sy+sh).toFixed(1)}" r="3" fill="${T.sun}"/>`);
-    // moon markers ride the top rail so the strip carries both bodies
-    if(d.moon.rise!=null) p(`<circle cx="${xh(d.moon.rise).toFixed(1)}" cy="${sy.toFixed(1)}" r="2.6" fill="none" stroke="${T.soft}" stroke-width="1"/>`);
-    if(d.moon.set!=null)  p(`<circle cx="${xh(d.moon.set).toFixed(1)}" cy="${sy.toFixed(1)}" r="2.6" fill="${T.soft}"/>`);
-    p(`<rect x="${stripX}" y="${sy}" width="${stripW}" height="${sh}" fill="none" stroke="${T.rule}" stroke-width=".5"/>`);
 
-    // sun times column
-    p(t(C.xSun, cy-1, S.rise!=null?fmtTime(S.rise,clock):(S.polar==="day"?"up all day":"no sunrise"), {size:9, fill:T.soft}));
-    p(t(C.xSun, cy+9.5, S.set!=null?fmtTime(S.set,clock):"", {size:9, fill:T.faint}));
+    /* the wave: a 30-minute grid merged with the exact turning points so every
+       crest and trough is drawn sharp */
+    const ts = [];
+    for(let t = M.startMin; t <= M.endMin; t += 30) ts.push(t);
+    for(const e of M.extremes) ts.push(e.t);
+    ts.sort((a,b)=>a-b);
+    let d = "";
+    for(let i=0;i<ts.length;i++){
+      if(i && ts[i]-ts[i-1] < 0.5) continue;
+      d += (d?"L":"M") + n1(xOf(ts[i])) + " " + Math.round(yOf(Y.atMin(ts[i]))*10)/10;
+    }
+    p(`<path d="${d}" fill="none" stroke="${T.wave}" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round"/>`);
 
-    // tide events
-    const ev = d.events.slice(0,5);
-    ev.forEach((e,j)=>{
-      const x = C.xEv + j*(L.colEvents/5);
-      const high = e.type==="H";
-      p(high
-        ? `<path d="M ${(x+4).toFixed(1)} ${cy-9} l 4 6.5 h -8 Z" fill="${T.waterDeep}"/>`
-        : `<path d="M ${(x+4).toFixed(1)} ${cy-2.5} l 4 -6.5 h -8 Z" fill="${T.water}" opacity=".7"/>`);
-      p(t(x+13, cy-3, fmtTime(e.min,clock), {size:10.5, fill:T.ink, weight:high?500:400}));
-      p(t(x+13, cy+9, fmtH(e.h,M.units), {size:10, fill:T.soft}));
+    /* tide labels: time outermost, height nearest the wave, as in the reference */
+    const rows = [
+      {list:mh, yTime:y0+P.monthLabel+P.timeRow-0.9, yHeight:y0+P.monthLabel+P.timeRow+P.heightRow-0.9, colour:T.dots.high},
+      {list:ml, yHeight:waveBot+P.heightRow-1.1,     yTime:waveBot+P.heightRow+P.timeRow-1.1,           colour:T.dots.low}
+    ];
+    const timeTexts = [], heightTexts = [], dots = {};
+    for(const r of rows){
+      const wTime = 5*CHW*P.fsSmall + 0.9;
+      const raw = r.list.map(e=>xOf(e.t));
+      const adj = spread(raw, wTime, wTime/2 + 2, P.W - wTime/2 - 2);
+      r.list.forEach((e,i)=>{
+        timeTexts.push({x:adj[i], y:r.yTime, t:fmtTime(e.t - Math.floor(e.t/1440)*1440, opts.clock)});
+        heightTexts.push({x:adj[i], y:r.yHeight, t:fmtH(e.h, Y.units)});
+        (dots[r.colour] ||= []).push([xOf(e.t), yOf(e.h)]);
+        // hairline leader when a label had to move off its own crest
+        if(Math.abs(adj[i]-raw[i]) > 1.5){
+          p(`<line x1="${n1(raw[i])}" y1="${n1(yOf(e.h))}" x2="${n1(adj[i])}" y2="${n1(r.yHeight + (r.colour===T.dots.high ? 0.6 : -2.4))}" stroke="${T.faint}" stroke-width="0.12"/>`);
+        }
+      });
+    }
+    p(group(`font-family='${FIGURE}' font-size="${P.fsSmall}" fill="${T.ink}" text-anchor="middle"`,
+            timeTexts.map(o=>txt(o.x,o.y,o.t))));
+    p(group(`font-family='${FIGURE}' font-size="${P.fsSmall}" fill="${T.soft}" text-anchor="middle"`,
+            heightTexts.map(o=>txt(o.x,o.y,o.t))));
+
+    /* sun and moon, riding the curve */
+    for(const sd of M.sun){
+      if(sd.rise != null) (dots[T.dots.sunrise] ||= []).push([xOf(sd.rise), yOf(Y.atMin(sd.rise))]);
+      if(sd.set  != null) (dots[T.dots.sunset]  ||= []).push([xOf(sd.set),  yOf(Y.atMin(sd.set))]);
+    }
+    const phaseKey = {0:"newMoon", 90:"firstQuarter", 180:"fullMoon", 270:"lastQuarter"};
+    const moonDots = [];
+    for(const ph of M.phases){
+      moonDots.push({c:T.dots[phaseKey[ph.target]], x:xOf(ph.min), y:yOf(Y.atMin(ph.min))});
+    }
+
+    for(const [colour, list] of Object.entries(dots)){
+      const r = (colour===T.dots.sunrise || colour===T.dots.sunset) ? 0.42 : 0.55;
+      p(`<g fill="${colour}">` + list.map(([x,y])=>`<circle cx="${n1(x)}" cy="${n1(y)}" r="${r}"/>`).join("") + `</g>`);
+    }
+    for(const m of moonDots){
+      p(`<circle cx="${n1(m.x)}" cy="${n1(m.y)}" r="1.15" fill="${m.c}" stroke="${T.bg}" stroke-width="0.3"/>`);
+    }
+
+    /* date row */
+    const dateY = waveBot + P.heightRow + P.timeRow + P.dateRow - 1.2;
+    const dates = M.sun.map((sd,i)=>{
+      const cx = P.M + (i + 0.5)*perDay;
+      return txt(cx, dateY, `${DOW3[sd.dow].toUpperCase()} ${i+1}`);
     });
-
-    // daily range bar
-    const bw = (d.range/(rMax||1))*(L.colRange-34);
-    p(`<rect x="${C.xRange}" y="${cy-4}" width="${Math.max(bw,0.5).toFixed(1)}" height="8" fill="${T.bar}" opacity=".72"/>`);
-    p(t(C.right, cy+3.5, fmtH(d.range,M.units), {size:9, fill:T.faint, anchor:"end"}));
+    p(group(`font-family='${DISPLAY}' font-size="${P.fsDate}" fill="${T.faint}" text-anchor="middle" letter-spacing="0.3"`, dates));
   });
-  p(`<line x1="${L.M}" y1="${yRows+rowsH}" x2="${C.right}" y2="${yRows+rowsH}" stroke="${T.ink}" stroke-width="1"/>`);
 
-  /* ---- footer ---- */
-  const fy = yRows + rowsH + 26;
-  const st = M.stats;
-  const cells = [
-    ["highest water", `${fmtH(st.highest.h,M.units)} ${M.unitLabel}`, `${MON3[M.month-1]} ${st.highest.day}, ${fmtTime(st.highest.min,clock)}`],
-    ["lowest water", `${fmtH(st.lowest.h,M.units)} ${M.unitLabel}`, `${MON3[M.month-1]} ${st.lowest.day}, ${fmtTime(st.lowest.min,clock)}`],
-    ["mean daily range", `${fmtH(st.meanRange,M.units)} ${M.unitLabel}`, `${st.count} tides this month`],
-    ["biggest spring", `${fmtH(st.spring.range,M.units)} ${M.unitLabel}`, `${MON3[M.month-1]} ${st.spring.day}`],
-    ["smallest neap", `${fmtH(st.neap.range,M.units)} ${M.unitLabel}`, `${MON3[M.month-1]} ${st.neap.day}`],
-    ["moon distance", `${Math.round(M.days_[Math.floor(M.days_.length/2)].moon.km).toLocaleString("en-US")} km`, "mid-month, centre to centre"]
-  ];
-  const cw = (C.right-L.M)/cells.length;
-  cells.forEach(([k,v,sub],i)=>{
-    const x = L.M + i*cw;
-    if(i) p(`<line x1="${x-10}" y1="${fy-14}" x2="${x-10}" y2="${fy+26}" stroke="${T.rule}" stroke-width=".6"/>`);
-    p(t(x, fy-4, k, {size:9, fill:T.faint}));
-    p(t(x, fy+15, v, {size:17, fill:T.ink, family:"serif"}));
-    p(t(x, fy+27, sub, {size:8.5, fill:T.soft}));
-  });
-  const HF = M.harmonics;
-  const credit = M.loc.station
-    ? `Tide predictions: NOAA CO-OPS station ${M.loc.station.id} ${M.loc.station.name}, ${M.loc.station.km.toFixed(0)} km away. Harmonic prediction, weather not included — not for navigation.`
+  /* footer */
+  const fy = P.H - P.footer + 12;
+  const st = Y.stats, HF = Y.harmonics;
+  const credit = Y.loc.station
+    ? `Tide predictions: NOAA CO-OPS station ${Y.loc.station.id} ${Y.loc.station.name}, ${Y.loc.station.km.toFixed(0)} km from the search point. Harmonic prediction; weather is not included.`
     : `Tide predicted from ${HF ? HF.parts.length : 0} harmonic constituents fitted to ${HF ? HF.days : 0} days of the Open-Meteo 8 km ocean model`
-      + `${HF ? `, M2 amplitude ${HF.M2.toFixed(2)} m, residual ${HF.rms.toFixed(2)} m` : ""} — not for navigation.`;
-  p(t(L.M, fy+52, credit, {size:9, fill:T.soft}));
-  p(t(C.right, fy+66, `Sun and moon computed locally · generated ${new Date().toISOString().slice(0,10)}`, {size:9, fill:T.faint, anchor:"end"}));
+      + `${HF ? `, M2 amplitude ${HF.M2.toFixed(2)} m, residual ${HF.rms.toFixed(2)} m` : ""}. Modelled, not measured.`;
+  p(`<line x1="${P.M}" y1="${P.H-P.footer+2}" x2="${P.W-P.M}" y2="${P.H-P.footer+2}" stroke="${T.soft}" stroke-width="0.3"/>`);
+  p(`<text x="${P.M}" y="${fy}" font-family='${FIGURE}' font-size="2.9" fill="${T.soft}">`
+    + esc(`${st.count} tides · highest ${fmtH(st.highest.h,Y.units)} ${Y.unitLabel} · lowest ${fmtH(st.lowest.h,Y.units)} ${Y.unitLabel} · mean range ${fmtH(st.meanRange,Y.units)} ${Y.unitLabel}`)
+    + `</text>`);
+  p(`<text x="${P.M}" y="${fy+6}" font-family='${FIGURE}' font-size="2.5" fill="${T.faint}">${esc(credit)}</text>`);
+  p(`<text x="${P.M}" y="${fy+11}" font-family='${FIGURE}' font-size="2.5" fill="${T.faint}">Sun and moon computed locally. Not for navigation.</text>`);
+  p(`<text x="${P.W-P.M}" y="${fy+11}" text-anchor="end" font-family='${FIGURE}' font-size="2.5" fill="${T.faint}">${esc("generated "+new Date().toISOString().slice(0,10))}</text>`);
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" `
-       + `viewBox="0 0 ${L.W} ${Math.round(H)}" width="${L.W}" height="${Math.round(H)}" `
-       + `role="img" aria-label="${esc(place)} tide chart for ${MONTHS[M.month-1]} ${M.year}">`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${P.W}mm" height="${P.H}mm" `
+       + `viewBox="0 0 ${P.W} ${P.H}" role="img" aria-label="${esc(place)} tide chart for ${Y.year}">`
        + `__FONTS__` + s.join("") + `</svg>`;
+}
+
+/* --------------------------------------------------- legend key templates
+   One small SVG per item, no background, sized to its own content so it can be
+   dropped straight onto the sheet and positioned by hand. */
+function keySVG(item, theme){
+  const T = THEMES[theme] || THEMES.navy;
+  const W = 62, H = 9;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" `
+    + `role="img" aria-label="${esc(item.label)} key">__FONTS__`
+    + `<circle cx="3" cy="4" r="1.6" fill="${T.dots[item.id]}"${item.id==="fullMoon"?` stroke="${T.soft}" stroke-width="0.2"`:""}/>`
+    + `<text x="7.4" y="3.6" font-family='${DISPLAY}' font-size="2.9" fill="${T.ink}" letter-spacing="0.5">${esc(item.label.toUpperCase())}</text>`
+    + `<text x="7.4" y="7.2" font-family='${FIGURE}' font-size="2.2" fill="${T.faint}">${esc(item.note)}</text>`
+    + `</svg>`;
 }
 
 /* ------------------------------------------------------------- font embedding */
@@ -1219,7 +1010,7 @@ let fontCSSPromise = null;
 async function embeddedFontCSS(){
   if(fontCSSPromise) return fontCSSPromise;
   fontCSSPromise = (async ()=>{
-    const url = "https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=IBM+Plex+Mono:wght@400;500&display=swap";
+    const url = "https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Jost:wght@300;400;500&display=swap";
     const css = await (await fetch(url)).text();
     const blocks = css.split("@font-face").slice(1)
       .filter(b => /unicode-range:[^;]*U\+0000-00FF/i.test(b) || !/unicode-range/i.test(b));
@@ -1307,9 +1098,9 @@ function download(blob, filename){
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
 }
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40);
-const fileBase = M => `tides-${slug(M.loc.name)}-${M.year}-${pad2(M.month)}`;
+const fileBase = Y => `tides-${slug(Y.loc.name)}-${Y.year}`;
 
-async function svgToPng(svgText, scale=2){
+async function svgToPng(svgText, targetWidth=3508){
   const blob = new Blob([svgText], {type:"image/svg+xml;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   try{
@@ -1317,9 +1108,10 @@ async function svgToPng(svgText, scale=2){
     img.decoding = "sync";
     await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>rej(new Error("The browser could not rasterise the chart.")); img.src=url; });
     const m = svgText.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
-    const w = m ? +m[1] : 1280, h = m ? +m[2] : 1600;
+    const w = m ? +m[1] : 594, h = m ? +m[2] : 841;
+    const scale = targetWidth/w;
     const cv = document.createElement("canvas");
-    cv.width = w*scale; cv.height = h*scale;
+    cv.width = Math.round(w*scale); cv.height = Math.round(h*scale);
     const ctx = cv.getContext("2d");
     ctx.scale(scale,scale);
     ctx.drawImage(img,0,0,w,h);
@@ -1327,32 +1119,20 @@ async function svgToPng(svgText, scale=2){
   } finally { URL.revokeObjectURL(url); }
 }
 
+
 /* --------------------------------------------------------------------- the app */
-const state = {
-  loc:null, stations:[], month:null, svg:null,
-  year:new Date().getFullYear(), monthNum:new Date().getMonth()+1
-};
+const state = { loc:null, stations:[], year:new Date().getFullYear(), poster:null, svg:null };
 
 function setStatus(msg, {error=false, progress=null}={}){
   const box = el("status");
-  box.className = "status" + (error?" err":"");
-  box.innerHTML = esc(msg) + (progress!=null ? `<span class="bar"><i style="width:${Math.round(progress*100)}%"></i></span>` : "");
+  box.className = "status" + (error ? " err" : "");
+  box.innerHTML = esc(msg) + (progress != null ? `<span class="bar"><i style="width:${Math.round(progress*100)}%"></i></span>` : "");
 }
 function setWarn(html){ el("warnbox").innerHTML = html ? `<div class="warn">${html}</div>` : ""; }
 
-function buildMonthButtons(){
-  const box = el("months");
-  box.innerHTML = "";
-  MON3.forEach((m,i)=>{
-    const b = document.createElement("button");
-    b.textContent = m;
-    b.setAttribute("aria-pressed", String(i+1===state.monthNum));
-    b.onclick = () => { state.monthNum = i+1; refreshMonthButtons(); render(); };
-    box.appendChild(b);
-  });
-}
-function refreshMonthButtons(){
-  [...el("months").children].forEach((b,i)=>b.setAttribute("aria-pressed", String(i+1===state.monthNum)));
+function drawKeys(){
+  el("keygrid").innerHTML = KEY_ITEMS.map(it =>
+    `<div class="k">${keySVG(it, el("theme").value).replace("__FONTS__","")}</div>`).join("");
 }
 
 async function doSearch(){
@@ -1367,9 +1147,8 @@ async function doSearch(){
     const ul = el("results");
     ul.innerHTML = "";
     list.forEach(r=>{
-      const li = document.createElement("li");
-      const b = document.createElement("button");
-      b.innerHTML = `<span>${esc(r.name)}<span style="color:var(--ink-faint)">${r.admin?" — "+esc(r.admin):""}</span></span>`
+      const li = document.createElement("li"), b = document.createElement("button");
+      b.innerHTML = `<span>${esc(r.name)}<span style="color:var(--faint)">${r.admin ? " — "+esc(r.admin) : ""}</span></span>`
                   + `<span class="coord">${r.lat.toFixed(2)}, ${r.lon.toFixed(2)}</span>`;
       b.onclick = () => { ul.hidden = true; pickPlace(r); };
       li.appendChild(b); ul.appendChild(li);
@@ -1387,22 +1166,17 @@ async function populateStations(preferId){
   const box = el("stationbox"), sel = el("station");
   const near = state.stations.filter(s => s.km < 200);
   sel.innerHTML = "";
-  if(!near.length){
-    box.hidden = true;
-    state.loc.station = null;
-    return;
-  }
+  if(!near.length){ box.hidden = true; state.loc.station = null; return; }
   near.forEach(s=>{
     const o = document.createElement("option");
     o.value = s.id;
-    o.textContent = `${s.name}${s.state?", "+s.state:""} — ${s.km.toFixed(0)} km (NOAA ${s.id})`;
+    o.textContent = `${s.name}${s.state ? ", "+s.state : ""} — ${s.km.toFixed(0)} km (NOAA ${s.id})`;
     sel.appendChild(o);
   });
   const o = document.createElement("option");
-  o.value = "model";
-  o.textContent = "Open-Meteo marine model (global grid)";
+  o.value = "model"; o.textContent = "Open-Meteo marine model (global grid)";
   sel.appendChild(o);
-  const chosen = preferId ? near.find(s=>s.id===preferId) : null;
+  const chosen = preferId ? near.find(s=>s.id === preferId) : null;
   state.loc.station = chosen || near[0];
   sel.value = state.loc.station.id;
   box.hidden = false;
@@ -1419,26 +1193,23 @@ async function pickPlace(place){
 async function render(){
   if(!state.loc) return;
   const opts = {units:el("units").value, clock:el("clock").value, theme:el("theme").value};
-  el("dlSvg").disabled = el("dlPng").disabled = el("dlYear").disabled = true;
+  el("dlSvg").disabled = el("dlPng").disabled = true;
   setWarn("");
   try{
-    setStatus(`Building ${MONTHS[state.monthNum-1]} ${state.year}…`, {progress:.15});
-    const M = await buildMonth(state.loc, state.year, state.monthNum, opts,
-      (msg,p)=>setStatus(msg,{progress:p}));
-    state.month = M;
-    setStatus("Drawing…", {progress:.9});
-    const svg = renderPoster(M, opts);
+    setStatus(`Building ${state.year}…`, {progress:.1});
+    const Y = await buildYear(state.loc, state.year, opts, (msg,p)=>setStatus(msg,{progress:p}));
+    state.poster = Y;
+    setStatus("Drawing twelve months…", {progress:.92});
+    const svg = renderYear(Y, opts);
     state.svg = svg;
     el("stage").innerHTML = svg.replace("__FONTS__","");
-    el("dlSvg").disabled = el("dlPng").disabled = el("dlYear").disabled = false;
-    setStatus(`${M.stats.count} tides · ${M.source} · ${M.loc.tz}`);
-    if(!M.loc.station){
-      const H = M.harmonics;
-      setWarn(`No NOAA station within 200 km, so this is a harmonic prediction: ${H.parts.length} tidal constituents fitted to ${H.days} days of the Open-Meteo 8 km ocean model, from ${esc(H.label)}. `
-        + `That lets any month be predicted, but the underlying grid is coarse — reasonable on open coast, unreliable in estuaries and narrow inlets. Heights are referenced to mean sea level, not chart datum.`
+    el("dlSvg").disabled = el("dlPng").disabled = false;
+    setStatus(`${Y.stats.count} tides across ${Y.nDays} days · ${Y.source} · ${Y.loc.tz}`);
+    if(!Y.loc.station){
+      const H = Y.harmonics;
+      setWarn(`No NOAA station within 200 km, so this is a harmonic prediction: ${H.parts.length} tidal constituents fitted to ${H.days} days of the Open-Meteo 8 km ocean model. `
+        + `Reasonable on open coast, unreliable in estuaries and narrow inlets. Heights are referenced to mean sea level, not chart datum.`
         + (H.days < 180 ? " <strong>Only a short record was available, so S2 and K2 could not be separated and accuracy is reduced.</strong>" : ""));
-    } else if(M.precision.includes("high/low only")){
-      setWarn("This is a subordinate station, so NOAA publishes only the high and low waters. The curve between them is interpolated.");
     }
     writeHash();
   }catch(e){
@@ -1451,13 +1222,12 @@ async function render(){
 function writeHash(){
   if(!state.loc) return;
   const p = new URLSearchParams({
-    q: state.loc.name, lat: state.loc.lat.toFixed(4), lon: state.loc.lon.toFixed(4),
-    tz: state.loc.tz, m: `${state.year}-${pad2(state.monthNum)}`,
-    u: el("units").value, t: el("theme").value
+    q:state.loc.name, lat:state.loc.lat.toFixed(4), lon:state.loc.lon.toFixed(4),
+    tz:state.loc.tz, y:String(state.year), u:el("units").value, t:el("theme").value
   });
   if(state.loc.admin) p.set("a", state.loc.admin);
   if(state.loc.station) p.set("s", state.loc.station.id);
-  history.replaceState(null,"","#"+p.toString());
+  history.replaceState(null, "", "#"+p.toString());
 }
 
 async function readHash(){
@@ -1466,20 +1236,20 @@ async function readHash(){
   const p = new URLSearchParams(h);
   if(!p.get("lat") || !p.get("lon")) return false;
   el("units").value = p.get("u") || "metric";
-  el("theme").value = p.get("t") || "chart";
-  const [y,m] = (p.get("m")||"").split("-");
-  if(y && m){ state.year = +y; state.monthNum = +m; }
-  el("year").value = state.year; refreshMonthButtons();
+  el("theme").value = p.get("t") || "navy";
+  state.year = +(p.get("y") || state.year);
+  el("year").value = state.year;
   el("q").value = p.get("q") || "";
+  drawKeys();
   state.loc = {name:p.get("q")||"Location", admin:p.get("a")||"", lat:+p.get("lat"), lon:+p.get("lon"),
                tz:p.get("tz")||"UTC", station:null};
   await populateStations(p.get("s"));
-  if(!p.get("s")) state.loc.station = null;   // the link asked for the model
+  if(!p.get("s")) state.loc.station = null;
   await render();
   return true;
 }
 
-/* ------------------------------------------------------------------ wiring up */
+/* wiring */
 el("go").onclick = doSearch;
 el("q").addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
 el("station").onchange = e => {
@@ -1490,56 +1260,51 @@ el("year").value = state.year;
 el("year").onchange = e => { state.year = clamp(+e.target.value||state.year, 1990, 2035); e.target.value = state.year; render(); };
 el("prevYear").onclick = () => { state.year--; el("year").value = state.year; render(); };
 el("nextYear").onclick = () => { state.year++; el("year").value = state.year; render(); };
-["units","clock","theme"].forEach(id => el(id).onchange = render);
-buildMonthButtons();
+["units","clock"].forEach(id => el(id).onchange = render);
+el("theme").onchange = () => { drawKeys(); render(); };
 
 el("dlSvg").onclick = async () => {
-  const btn = el("dlSvg"); btn.disabled = true;
+  const b = el("dlSvg"); b.disabled = true;
   try{
-    setStatus("Preparing the SVG…", {progress:.5});
+    setStatus("Preparing the A1 sheet…", {progress:.5});
     const svg = await finalSVG(state.svg, el("embedFonts").checked);
-    download(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}), fileBase(state.month)+".svg");
+    download(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}), fileBase(state.poster)+"-a1.svg");
     setStatus("Saved.");
   }catch(e){ setStatus(e.message,{error:true}); }
-  btn.disabled = false;
+  b.disabled = false;
 };
 
 el("dlPng").onclick = async () => {
-  const btn = el("dlPng"); btn.disabled = true;
+  const b = el("dlPng"); b.disabled = true;
   try{
-    setStatus("Rasterising…", {progress:.5});
+    setStatus("Rasterising at 150 dpi — this takes a moment at A1…", {progress:.5});
     const svg = await finalSVG(state.svg, true);
-    const png = await svgToPng(svg, 2);
-    download(png, fileBase(state.month)+".png");
+    download(await svgToPng(svg, 3508), fileBase(state.poster)+"-a1.png");
     setStatus("Saved.");
   }catch(e){ setStatus(e.message,{error:true}); }
-  btn.disabled = false;
+  b.disabled = false;
 };
 
-el("dlYear").onclick = async () => {
-  const btn = el("dlYear"); btn.disabled = true;
-  const opts = {units:el("units").value, clock:el("clock").value, theme:el("theme").value};
-  const files = [];
+el("dlKeys").onclick = async () => {
+  const b = el("dlKeys"); b.disabled = true;
   try{
+    setStatus("Preparing key templates…", {progress:.5});
     const fonts = el("embedFonts").checked ? await embeddedFontCSS() : "";
-    for(let m=1; m<=12; m++){
-      setStatus(`Building ${MONTHS[m-1]} ${state.year} — ${m} of 12…`, {progress:m/13});
-      const M = await buildMonth(state.loc, state.year, m, opts);
-      files.push({name:`${fileBase(M)}.svg`, text: renderPoster(M, opts).replace("__FONTS__", fonts)});
-    }
-    download(zipStore(files), `tides-${slug(state.loc.name)}-${state.year}-svg.zip`);
-    setStatus(`Saved 12 charts for ${state.year}.`);
-  }catch(e){
-    setStatus(`Stopped after ${files.length} months: ${e.message}`, {error:true});
-    if(files.length) download(zipStore(files), `tides-${slug(state.loc.name)}-${state.year}-partial.zip`);
-  }
-  btn.disabled = false;
+    const theme = el("theme").value;
+    const files = KEY_ITEMS.map(it => ({
+      name:`key-${it.id.replace(/[A-Z]/g, c=>"-"+c.toLowerCase())}.svg`,
+      text: keySVG(it, theme).replace("__FONTS__", fonts)
+    }));
+    download(zipStore(files), `tide-almanac-keys-${theme}.zip`);
+    setStatus(`Saved ${files.length} key templates.`);
+  }catch(e){ setStatus(e.message,{error:true}); }
+  b.disabled = false;
 };
 
-readHash().then(ok => {
-  if(!ok) setStatus("Ready. Try Brighton, Monterey, Halifax, Broome…");
-});
+drawKeys();
+readHash().then(ok => { if(!ok) setStatus("Ready. Try Newquay, Monterey, Halifax, Broome…"); });
 window.addEventListener("hashchange", readHash);
+
 </script>
 </body>
 </html>
